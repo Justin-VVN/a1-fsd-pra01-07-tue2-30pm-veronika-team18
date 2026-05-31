@@ -54,6 +54,22 @@ export default function VenuesPage() {
   // useEffect(() => {
   //     if (!currentUser) router.push('/signin');
   // }, [currentUser, router]);
+  useEffect(() => {
+  const storedUser = localStorage.getItem('vv_currentUser');
+
+  if (!storedUser) {
+    router.push('/signin');
+    return;
+  }
+
+  const user = JSON.parse(storedUser);
+
+  if (user.role !== 'vendor') {
+    router.push('/users');
+  }
+  }, [router]);
+
+
 
   // Load my posted venues
   useEffect(() => {
@@ -222,7 +238,7 @@ export default function VenuesPage() {
     toast({ title: 'Booking rejected', status: 'info' });
   };
 
-  if (!currentUser) return <Text p={8}>Redirecting...</Text>;
+  if (!currentUser || currentUser.role !== 'vendor') return <Text p={8}>Redirecting...</Text>;
   const renderDocuments = (docs: any) => {
     if (!docs) return <Text color="gray.400">No documents uploaded</Text>;
 

@@ -11,22 +11,22 @@ export default function SignIn() {
   const toast = useToast();
   const { currentUser, setCurrentUser } = useContext(AppContext);
 
-  
-  //redirecting to either vendor or hirer dashboard based on role
-  localStorage.setItem('vv_currentUser', JSON.stringify(user));
-   setCurrentUser(user);
-
-   if (user.role === 'vendor') {
-    router.push('/vendor');
-   } else {
-    router.push('/users');
-     }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     const users = JSON.parse(localStorage.getItem('vv_users') || '[]');
     const user = users.find((u: any) => u.email === email && u.password === password);
+
+      //redirecting to either vendor or hirer dashboard based on role
+     localStorage.setItem('vv_currentUser', JSON.stringify(user));
+     setCurrentUser(user);
+
+      if (user.role === 'vendor') {
+      router.push('/vendor');
+      } else {
+      router.push('/users');
+      }
 
     if (user) {
       const { password, ...currUser } = user;
