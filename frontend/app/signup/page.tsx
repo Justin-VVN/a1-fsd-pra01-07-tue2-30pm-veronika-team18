@@ -2,7 +2,7 @@
 
 import { useContext, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Box, Heading, FormControl, FormLabel, Input, Button, VStack, Text, useToast } from '@chakra-ui/react';
+import { Box, Heading, FormControl, FormLabel, Input, Button, VStack, Text, useToast, Select } from '@chakra-ui/react';
 import { AppContext } from '../store/ContextProvider';
 
 export default function SignUp() {
@@ -12,6 +12,7 @@ export default function SignUp() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const router = useRouter();
   const toast = useToast();
+  const [role, setRole] = useState<'hirer' | 'vendor'>('hirer'); 
 
   const { currentUser, setCurrentUser } = useContext(AppContext);
 
@@ -33,7 +34,9 @@ export default function SignUp() {
     }
 
     // Add new user
-    users.push({ name, email, password, id: crypto.randomUUID() });
+    users.push({ name, email, password, id: crypto.randomUUID(), role,  
+      dateJoined: new Date().toISOString(), documentName: '', documentUrl: '', 
+    });
     localStorage.setItem('vv_users', JSON.stringify(users));
 
     // Auto-login after signup
@@ -58,6 +61,15 @@ export default function SignUp() {
             <FormLabel>Email</FormLabel>
             <Input type="email" name="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@email.com" />
           </FormControl>
+         
+
+         <FormControl isRequired>
+           <FormLabel>Account Type</FormLabel>
+           <Select value={role} onChange={(e) => setRole(e.target.value as 'hirer' | 'vendor')}>
+           <option value="hirer">Hirer</option>
+           <option value="vendor">Vendor</option>
+          </Select>
+         </FormControl>
 
           <FormControl isRequired>
             <FormLabel>Password</FormLabel>
