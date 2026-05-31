@@ -25,12 +25,46 @@ export default function MyBookingsPage() {
 
   const [myBookings, setMyBookings] = useState<any[]>([]);
 
+  // Helper functions for ratings
+  const getCompletedRatedBookings = (bookings: any[]) => {
+  return bookings.filter(
+    (booking) => booking.status === 'confirmed' && Number(booking.rating) > 0
+  );
+};
+
+const getAverageRating = (bookings: any[]) => {
+  const ratedBookings = getCompletedRatedBookings(bookings);
+
+  if (ratedBookings.length === 0) return 0;
+
+  const total = ratedBookings.reduce(
+    (sum, booking) => sum + Number(booking.rating),
+    0
+  );
+
+  return total / ratedBookings.length;
+};
+
+const StarRating = ({ score }: { score: number }) => {
+  const rounded = Math.round(score);
+
+  return (
+    <Text fontSize="xl" color="yellow.400">
+      {'★'.repeat(rounded)}
+      {'☆'.repeat(5 - rounded)}
+    </Text>
+  );
+};
+
+
+
+
   //defining booking history
   const bookingHistory = myBookings.filter(
     (booking) => booking.status === 'confirmed',
   );
 
-  
+  const averageRating = getAverageRating(myBookings);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -79,12 +113,15 @@ export default function MyBookingsPage() {
   if (!currentUser) {
     return <Text p={8}>Redirecting to sign in...</Text>;
   }
+  
+
 
   console.log(myBookings);
   const renderDocuments = (docs: any) => {
     if (!docs) return <Text color="gray.400">No documents uploaded</Text>;
 
     return (
+
       <VStack align="start" spacing={4} mt={3}>
         {/* Driver's License - Image */}
         {docs.driverLicense && (
@@ -157,6 +194,25 @@ export default function MyBookingsPage() {
       <Heading mb={8} textAlign='center' color='blue.600'>
         My Bookings – Welcome, {currentUser.name}!
       </Heading>
+
+
+
+        {/*  section for hirer to view their reputation score */}
+        <Box bg="white" p={5} borderRadius="xl" boxShadow="md" mb={8}>
+         <Heading size="md" mb={2}>My Hirer Reputation</Heading>
+
+         {averageRating === 0 ? (
+         <Text color="gray.500">No ratings yet.</Text>
+         ) : (
+         <HStack>
+         <StarRating score={averageRating} />
+         <Text fontWeight="semibold">
+        {averageRating.toFixed(1)} / 5
+         </Text>
+        </HStack>
+             )}
+        </Box>
+
 
       {myBookings.length === 0 ? (
         <Box textAlign='center' py={20}>
@@ -316,9 +372,11 @@ export default function MyBookingsPage() {
                   <Text>
                     <strong>Date of Hire:</strong> {booking.checkIn}
                   </Text>
-                  <Text>
-                    <strong>Rating:</strong> {booking.rating || 0} / 5
-                  </Text>
+                   <HStack>
+                     <Text fontWeight="semibold">Rating:</Text>
+                     <StarRating score={Number(booking.rating || 0)} />
+                     <Text>{booking.rating || 0} / 5</Text>
+                   </HStack>
                 </VStack>
               </Box>
             ))}

@@ -112,6 +112,8 @@ export default function VenuesPage() {
     </Text>
   );
 
+  
+
   {/*handling blocked dates for venues*/ }
   const handleBlockVenue = () => {
     if (
