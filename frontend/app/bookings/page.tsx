@@ -30,6 +30,8 @@ export default function MyBookingsPage() {
     (booking) => booking.status === 'confirmed',
   );
 
+  
+
   useEffect(() => {
     if (!currentUser) return;
 

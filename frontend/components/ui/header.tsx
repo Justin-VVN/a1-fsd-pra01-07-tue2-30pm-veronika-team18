@@ -25,7 +25,7 @@ export default function Header() {
   console.log(currentUser);
   
   return (
-    <Box as="header" bg="blue.600" color="white" py={4} px={8} boxShadow="md">
+    <Box as="header" bg="#E6787F;" color="white" py={4} px={8} boxShadow="md">
       <Flex maxW="80vw" mx="auto" align="center">
         <Heading as="h1" size="lg" letterSpacing="tight">
           <Link href="/">Venue Vendors (VV)</Link>
