@@ -112,7 +112,30 @@ export default function VenuesPage() {
     </Text>
   );
 
-  
+  const getHirerBookings = (hirerId: string) => {
+  const allBookings = JSON.parse(localStorage.getItem('vv_bookings') || '[]');
+
+  return allBookings.filter(
+    (booking: any) => booking.hirer?.id === hirerId
+  );
+};
+
+const getHirerAverageRating = (hirerId: string) => {
+  const hirerBookings = getHirerBookings(hirerId);
+
+  const ratedBookings = hirerBookings.filter(
+    (booking: any) => booking.status === 'confirmed' && Number(booking.rating) > 0
+  );
+
+  if (ratedBookings.length === 0) return 0;
+
+  const total = ratedBookings.reduce(
+    (sum: number, booking: any) => sum + Number(booking.rating),
+    0
+  );
+
+  return total / ratedBookings.length;
+};
 
   {/*handling blocked dates for venues*/ }
   const handleBlockVenue = () => {
@@ -221,11 +244,11 @@ export default function VenuesPage() {
   const acceptBooking = (bookingId: number) => {
     const allBookings = JSON.parse(localStorage.getItem('vv_bookings') || '[]');
     const updated = allBookings.map((b: any) =>
-      b.id === bookingId ? { ...b, status: 'confirmed' } : b,
+      b.id === bookingId ? { ...b, status: 'confirmed'} : b,
     );
     localStorage.setItem('vv_bookings', JSON.stringify(updated));
     setBookingRequests((prev) =>
-      prev.map((b) => (b.id === bookingId ? { ...b, status: 'confirmed' } : b)),
+      prev.map((b) => (b.id === bookingId ? { ...b, status: 'confirmed'} : b)),
     );
     toast({ title: 'Booking accepted!', status: 'success' });
   };
@@ -477,6 +500,7 @@ export default function VenuesPage() {
               <SimpleGrid columns={[1, 2]} spacing={6}>
                 {bookingRequests.map((req: any) => {
                   const score = getCredibilityScore(req.additionalDocuments);
+                  const reputationScore = getHirerAverageRating(req.hirer?.id);
                   return (
                     <Box
                       key={req.id}
@@ -519,6 +543,14 @@ export default function VenuesPage() {
                         <Text fontWeight="semibold">Hirer Credibility:</Text>
                         <StarRating score={score} />
                         <Text fontSize="sm" color="gray.500">({score}/5)</Text>
+                      </HStack>
+
+                      <HStack mt={3}>
+                       <Text fontWeight="semibold">Hirer Reputation:</Text>
+                       <StarRating score={reputationScore} />
+                       <Text fontSize="sm" color="gray.500">
+                       ({reputationScore.toFixed(1)}/5)
+                       </Text>
                       </HStack>
 
                       <Box pt={3} w="full">
