@@ -262,6 +262,35 @@ const getHirerAverageRating = (hirerId: string) => {
     setBookingRequests(updated);
     toast({ title: 'Booking rejected', status: 'info' });
   };
+  
+  //Hirer rating section
+  const rateHirer = (bookingId: number, rating: number) => {
+  const allBookings = JSON.parse(
+    localStorage.getItem('vv_bookings') || '[]'
+  );
+
+  const updated = allBookings.map((b: any) =>
+    b.id === bookingId
+      ? { ...b, rating }
+      : b
+  );
+
+  localStorage.setItem('vv_bookings', JSON.stringify(updated));
+
+  setBookingRequests((prev) =>
+    prev.map((b) =>
+      b.id === bookingId
+        ? { ...b, rating }
+        : b
+    )
+  );
+
+  toast({
+    title: `Hirer rated ${rating} stars`,
+    status: 'success',
+  });
+  };
+
 
   if (!currentUser || currentUser.role !== 'vendor') return <Text p={8}>Redirecting...</Text>;
   const renderDocuments = (docs: any) => {
@@ -576,10 +605,30 @@ const getHirerAverageRating = (hirerId: string) => {
                             </Button>
                           </>
                         )}
+
+
+
                         {req.status === 'confirmed' && (
+                          <VStack>
                           <Badge colorScheme="green" fontSize="md" px={4} py={1} borderRadius="full">
                             Confirmed
                           </Badge>
+                          <Text fontWeight="semibold">Rate Hirer:</Text>
+
+                          <HStack>
+                           {[1, 2, 3, 4, 5].map((rating) => (
+                           <Button
+                            key={rating}
+                            size="sm"
+                            colorScheme={req.rating === rating ? 'yellow' : 'gray'}
+                            onClick={() => rateHirer(req.id, rating)}
+                            >
+                           {rating}★
+                           </Button>
+                           ))}
+                         </HStack>
+
+                         </VStack>
                         )}
                         {req.status === 'rejected' && (
                           <Badge colorScheme="red" fontSize="md" px={4} py={1} borderRadius="full">
