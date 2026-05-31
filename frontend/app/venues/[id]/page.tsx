@@ -25,6 +25,7 @@ import {
   AccordionPanel,
   AccordionIcon,
   Checkbox,
+  Select,
 } from '@chakra-ui/react';
 import { AddIcon, MinusIcon } from '@chakra-ui/icons';
 import { AppContext } from '@/app/store/ContextProvider';
@@ -62,7 +63,7 @@ export default function VenueDetailPage({
 
   const [creditStar, setCreditStar] = useState(0);
 
-
+  const [preferenceRank, setPreferenceRank] = useState(''); //for ranking booking preferences
 
   useEffect(() => {
     const savedVenues = localStorage.getItem('vv_venues');
@@ -103,6 +104,7 @@ export default function VenueDetailPage({
   const insuranceInputRef = useRef(null);
   const businessCertInputRef = useRef(null);
 
+
   // Additional documents
   const toBase64 = (file: File) =>
     new Promise((resolve, reject) => {
@@ -138,6 +140,11 @@ export default function VenueDetailPage({
       return;
     }
 
+    if (!preferenceRank) {
+    toast({ title: 'Please select a venue preference rank', status: 'error' });
+    return;
+    }
+
     let driverBase64 = null;
     let insuranceBase64 = null;
     let businessCertBase64 = null;
@@ -154,6 +161,7 @@ export default function VenueDetailPage({
       businessCertBase64 = await toBase64(businessCertInputRef.current.files[0]);
       // console.log('file:', businessCertInputRef.current.files[0]);
     }
+    
 
 
 
@@ -205,6 +213,7 @@ export default function VenueDetailPage({
       status: 'pending',
       additionalDocuments,
       creditStar: finalCreditStar,
+      preferenceRank: Number(preferenceRank),
     };
 
     bookings.push(newBooking);
@@ -224,6 +233,7 @@ export default function VenueDetailPage({
     setDiscount({ valid: false, percentage: 0, amount: 0 });
     setCreditStar(0);
     setIsBusiness(false); setAbnNumber('');
+    setPreferenceRank('');
     if (driverLicenceInputRef.current) driverLicenceInputRef.current.value = '';
     if (insuranceInputRef.current) insuranceInputRef.current.value = '';
     if (businessCertInputRef.current) businessCertInputRef.current.value = '';
@@ -401,6 +411,20 @@ export default function VenueDetailPage({
               </HStack>
             </FormControl>
             <Divider />
+
+            {/*set preference rank based on the documents provided*/}
+           <FormControl isRequired>
+          <FormLabel>Venue Preference Rank</FormLabel>
+          <Select
+           placeholder="Select how strongly you prefer this venue"
+           value={preferenceRank}
+           onChange={(e) => setPreferenceRank(e.target.value)}
+          >
+          <option value="1">1 Low preference</option>
+          <option value="2">2 Medium preference</option>
+          <option value="3">3 Top preference</option>
+         </Select>
+          </FormControl>
 
             {/* Show Details Accordion */}
             {nights > 0 && (

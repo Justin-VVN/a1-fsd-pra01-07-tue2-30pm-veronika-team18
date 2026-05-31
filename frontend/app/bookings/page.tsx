@@ -72,26 +72,7 @@ export default function MyBookingsPage() {
   {
     /*Preferences ranking section */
   }
-  const setPreferenceRank = (bookingId: number, rank: number) => {
-    const allBookings = JSON.parse(localStorage.getItem('vv_bookings') || '[]');
-
-    const updatedAllBookings = allBookings.map((booking: any) =>
-      booking.id === bookingId ? { ...booking, preferenceRank: rank } : booking,
-    );
-
-    localStorage.setItem('vv_bookings', JSON.stringify(updatedAllBookings));
-
-    const updatedMyBookings = updatedAllBookings.filter(
-      (booking: any) => booking.hirer?.id === currentUser.id,
-    );
-
-    setMyBookings(updatedMyBookings);
-
-    toast({
-      title: `Preference rank ${rank} saved`,
-      status: 'success',
-    });
-  };
+ 
 
   if (!currentUser) {
     return <Text p={8}>Redirecting to sign in...</Text>;
@@ -259,48 +240,12 @@ export default function MyBookingsPage() {
                       <Text fontWeight='semibold'>Guests:</Text>
                       <Text>{booking.guests}</Text>
                     </HStack>
-                    
-                    <Box pt={2}>
-                      <Text fontWeight='semibold' mb={2}>
-                        Venue Preference Rank
-                      </Text>
+                  
 
-                      <HStack spacing={2}>
-                        <Button
-                          size='xs'
-                          onClick={() => setPreferenceRank(booking.id, 1)}
-                          colorScheme={
-                            booking.preferenceRank === 1 ? 'blue' : 'gray'
-                          }
-                        >
-                          1
-                        </Button>
-
-                        <Button
-                          size='xs'
-                          onClick={() => setPreferenceRank(booking.id, 2)}
-                          colorScheme={
-                            booking.preferenceRank === 2 ? 'blue' : 'gray'
-                          }
-                        >
-                          2
-                        </Button>
-
-                        <Button
-                          size='xs'
-                          onClick={() => setPreferenceRank(booking.id, 3)}
-                          colorScheme={
-                            booking.preferenceRank === 3 ? 'blue' : 'gray'
-                          }
-                        >
-                          3
-                        </Button>
-                      </HStack>
-
-                      <Text mt={2}>
-                        Current Rank: {booking.preferenceRank || 'Not set'}
-                      </Text>
-                    </Box>
+                  <HStack>
+                 <Text fontWeight="semibold">Preference Rank:</Text>
+                 <Text>{booking.preferenceRank}</Text>
+                 </HStack>
                   </VStack>
 
                   <Box pt={3} w="full">
