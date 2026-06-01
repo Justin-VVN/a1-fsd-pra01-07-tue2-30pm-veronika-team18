@@ -71,6 +71,17 @@ export default function UserPage({
     <div className='px-32'>
       <form onSubmit={onSave}>
         <FormControl>
+         <FormLabel>Date Account Was Created</FormLabel>
+         <Input
+          isReadOnly
+           value={
+           currentUser.dateJoined
+            ? new Date(currentUser.dateJoined).toLocaleDateString()
+            : ''
+           }
+          />
+         </FormControl>
+        <FormControl>
           <FormLabel>User ID</FormLabel>
           <Input type='text' name='id' disabled defaultValue={currentUser.id} />
         </FormControl>
