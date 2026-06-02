@@ -18,7 +18,7 @@ export const AppDataSource = new DataSource({
   // but should be disabled in production to prevent accidental data loss.
   synchronize: true,
   logging: true, // Enable logging for debugging purposes
-  entities: [User],
+  entities: [User, Venue],
   migrations: [],
   subscribers: [],
 });

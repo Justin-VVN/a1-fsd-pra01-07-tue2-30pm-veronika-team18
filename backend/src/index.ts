@@ -2,11 +2,13 @@ import "reflect-metadata";
 import express from "express";
 import { AppDataSource } from "./data-source";
 import userRoutes from "./routes/user.routes";
+import venueRoutes from "./routes/venue.routes";
 import cors from "cors";
 const app = express();
 const PORT = process.env.PORT || 3001;
 
 app.use(cors());
+app.use("/api", venueRoutes);
 app.use(express.json());
 app.use("/api", userRoutes);
 
