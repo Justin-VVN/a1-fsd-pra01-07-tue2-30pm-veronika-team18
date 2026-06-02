@@ -4,7 +4,10 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  OneToMany,
 } from 'typeorm';
+
+import { Booking } from "./Booking";
 
 @Entity()
 export class Venue {
@@ -36,4 +39,8 @@ export class Venue {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  //making sure one venue can have many booking requests
+  @OneToMany(() => Booking, (booking) => booking.venue)
+  bookings: Booking[];
 }

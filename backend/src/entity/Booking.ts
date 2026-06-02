@@ -4,7 +4,11 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
 } from "typeorm";
+
+import { Venue } from "./Venue";
 
 @Entity()
 export class Booking {
@@ -58,4 +62,9 @@ export class Booking {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  //making sure many bookings can belong to one venue
+  @ManyToOne(() => Venue, (venue) => venue.bookings, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "venueId" })
+  venue: Venue;
 }
