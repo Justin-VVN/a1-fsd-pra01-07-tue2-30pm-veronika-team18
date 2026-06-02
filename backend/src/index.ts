@@ -5,6 +5,7 @@ import userRoutes from "./routes/user.routes";
 import venueRoutes from "./routes/venue.routes";
 import bookingRoutes from "./routes/booking.routes";
 import reviewRoutes from "./routes/review.routes";
+import blockedDateRoutes from "./routes/blockedDate.routes";
 import cors from "cors";
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -15,6 +16,7 @@ app.use("/api", venueRoutes);
 app.use(express.json());
 app.use("/api", userRoutes);
 app.use("/api", reviewRoutes);
+app.use("/api", blockedDateRoutes);
 
 AppDataSource.initialize()
   .then(() => {
