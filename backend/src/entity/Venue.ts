@@ -7,7 +7,9 @@ import {
   OneToMany,
 } from 'typeorm';
 
+//importing entities for the relationships
 import { Booking } from "./Booking";
+import { BlockedDate } from "./BlockedDate";
 
 @Entity()
 export class Venue {
@@ -43,4 +45,8 @@ export class Venue {
   //making sure one venue can have many booking requests
   @OneToMany(() => Booking, (booking) => booking.venue)
   bookings: Booking[];
+
+  // One venue can have many blocked dates/timeslots
+  @OneToMany(() => BlockedDate, (blockedDate) => blockedDate.venue)
+  blockedDates: BlockedDate[];
 }

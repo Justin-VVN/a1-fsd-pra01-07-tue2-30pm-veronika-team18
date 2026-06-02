@@ -4,7 +4,12 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
 } from "typeorm";
+
+//import for venue relationship (many to one)
+import { Venue } from "./Venue";
 
 @Entity()
 export class BlockedDate {
@@ -29,4 +34,9 @@ export class BlockedDate {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  //making sure many blocked dates can belong to one venue
+  @ManyToOne(() => Venue, (venue) => venue.blockedDates, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "venueId" })
+  venue: Venue;
 }
