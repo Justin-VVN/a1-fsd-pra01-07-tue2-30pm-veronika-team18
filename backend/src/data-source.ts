@@ -3,6 +3,7 @@ import { DataSource } from 'typeorm';
 import { User } from './entity/User';
 import { Venue } from './entity/Venue';
 import { Booking } from "./entity/Booking";
+import { Review } from "./entity/Review";
 
 export const AppDataSource = new DataSource({
   type: 'mssql',
@@ -19,7 +20,7 @@ export const AppDataSource = new DataSource({
   // but should be disabled in production to prevent accidental data loss.
   synchronize: true,
   logging: true, // Enable logging for debugging purposes
-  entities: [User, Venue, Booking],
+  entities: [User, Venue, Booking, Review],
   migrations: [],
   subscribers: [],
 });
