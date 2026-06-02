@@ -5,6 +5,7 @@ import { Venue } from './entity/Venue';
 import { Booking } from "./entity/Booking";
 import { Review } from "./entity/Review";
 import { BlockedDate } from "./entity/BlockedDate";
+import { Document } from "./entity/Document";
 
 export const AppDataSource = new DataSource({
   type: 'mssql',
@@ -21,7 +22,7 @@ export const AppDataSource = new DataSource({
   // but should be disabled in production to prevent accidental data loss.
   synchronize: true,
   logging: true, // Enable logging for debugging purposes
-  entities: [User, Venue, Booking, Review, BlockedDate],
+  entities: [User, Venue, Booking, Review, BlockedDate, Document],
   migrations: [],
   subscribers: [],
 });

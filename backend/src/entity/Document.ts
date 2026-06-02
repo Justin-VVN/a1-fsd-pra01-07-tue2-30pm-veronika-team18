@@ -4,7 +4,12 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
 } from "typeorm";
+
+//importing booking entity for the relationship with document entity
+import { Booking } from "./Booking";
 
 @Entity()
 export class Document {
@@ -47,4 +52,11 @@ export class Document {
   //timestamp for update to the doc
   @UpdateDateColumn()
   updatedAt: Date;
+
+  // Many documents can belong to one booking
+  @ManyToOne(() => Booking, (booking) => booking.documents, {
+  onDelete: "CASCADE",
+   })
+  @JoinColumn({ name: "bookingId" })
+  booking: Booking;
 }

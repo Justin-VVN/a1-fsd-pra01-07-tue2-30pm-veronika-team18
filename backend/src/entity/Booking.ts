@@ -6,9 +6,11 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  OneToMany,
 } from "typeorm";
 
 import { Venue } from "./Venue";
+import { Document } from "./Document";
 
 @Entity()
 export class Booking {
@@ -67,4 +69,8 @@ export class Booking {
   @ManyToOne(() => Venue, (venue) => venue.bookings, { onDelete: "CASCADE" })
   @JoinColumn({ name: "venueId" })
   venue: Venue;
+
+  //one booking can have many documents
+  @OneToMany(() => Document, (document) => document.booking)
+   documents: Document[];
 }
