@@ -89,7 +89,7 @@ export class UserController {
    */
   async update(request: Request, response: Response) {
     const id = parseInt(request.params.id);
-    const { firstName, lastName, email, age } = request.body;
+    const { firstName, email, type } = request.body;
 
     let userToUpdate = await this.userRepository.findOne({
       where: { id },
@@ -101,9 +101,8 @@ export class UserController {
 
     userToUpdate = Object.assign(userToUpdate, {
       firstName,
-      lastName,
       email,
-      age,
+      type,
     });
 
     try {
