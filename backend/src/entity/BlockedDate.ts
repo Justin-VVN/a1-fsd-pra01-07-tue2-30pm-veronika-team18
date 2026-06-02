@@ -16,13 +16,14 @@ export class BlockedDate {
 
   @Column()
   startDate: string;
-
+  
   @Column()
   endDate: string;
 
+   //optional reason for blocking the date.
   @Column({ nullable: true })
   reason: string;
-
+ 
   @CreateDateColumn()
   createdAt: Date;
 

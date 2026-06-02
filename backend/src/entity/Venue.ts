@@ -10,13 +10,15 @@ import {
 export class Venue {
   @PrimaryGeneratedColumn()
   id: number;
-
+  
+  //name of the place
   @Column()
   name: string;
-
+ 
   @Column()
   ownerId: number;
-
+ 
+  //image source for the venue card
   @Column()
   imgSrc: string;
 

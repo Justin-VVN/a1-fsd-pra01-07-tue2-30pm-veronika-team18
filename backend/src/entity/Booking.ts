@@ -40,16 +40,19 @@ export class Booking {
 
   @Column({ nullable: true })
   preferenceRank: number;
-
+  
+  //tota price for the booking
   @Column()
   total: number;
-
+  
+  //status of the booking before the vendor decides
   @Column({ default: "pending" })
   status: string;
-
+  
+  // rating for the booking
   @Column({ nullable: true })
   rating: number;
-
+  
   @CreateDateColumn()
   createdAt: Date;
 
