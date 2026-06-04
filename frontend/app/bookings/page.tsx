@@ -17,6 +17,7 @@ import {
   useToast,
 } from '@chakra-ui/react';
 import { AppContext } from '../store/ContextProvider';
+import { BOOKING_API, VENUE_API, apiFetch } from '@/lib/api';
 
 export default function MyBookingsPage() {
   const { currentUser } = useContext(AppContext);
@@ -67,23 +68,53 @@ const StarRating = ({ score }: { score: number }) => {
   const averageRating = getAverageRating(myBookings);
 
   useEffect(() => {
-    if (!currentUser) return;
-
-    const lsBookings = localStorage.getItem('vv_bookings') || '[]';
-
-    try {
-      const bookings = JSON.parse(lsBookings);
-
-      const filtered = bookings.filter(
-        (bk: any) => bk.hirer?.id === currentUser.id,
-      );
-
-      setMyBookings(filtered);
-      console.log(filtered);
-    } catch (e) {
-      console.error(e);
+    if (!currentUser) {
+      router.push('/signin');
+      return;
     }
-  }, [currentUser]);
+
+    if (currentUser.type !== 'hirer') {
+      router.push('/vendor');
+      return;
+    }
+
+    const fetchBookings = async () => {
+      try {
+        const bookings = await apiFetch<any[]>(`${BOOKING_API}/bookings`);
+
+        // filter bookings belonging to current user (supports hirer object or hirerId)
+        const filtered = bookings.filter((bk: any) => {
+          const hirerId = bk?.hirer?.id ?? bk?.hirerId ?? bk?.hirer_id;
+          return String(hirerId) === String(currentUser.id);
+        });
+
+        // try to enrich bookings with venue objects; backend may return venueId only
+        let venueMap = new Map<string, any>();
+        try {
+          const allVenues = await apiFetch<any[]>(`${VENUE_API}/venues`);
+          venueMap = new Map(allVenues.map((v: any) => [String(v.id), v]));
+        } catch (vErr) {
+          // if venue list fetch fails, we'll just fallback to placeholders
+          console.warn('Could not fetch venues for enrichment:', vErr);
+        }
+
+        const enriched = filtered.map((bk: any) => {
+          const venue = bk?.venue ?? venueMap.get(String(bk?.venueId)) ?? bk?.venue ?? null;
+          return {
+            ...bk,
+            venue: venue ?? { id: bk?.venueId ?? null, imgSrc: '/placeholder.png', name: 'Unknown Venue', location: '' },
+          };
+        });
+
+        setMyBookings(enriched);
+      } catch (e) {
+        console.error('Failed to load hirer bookings:', e);
+        setMyBookings([]);
+      }
+    };
+
+    fetchBookings();
+  }, [currentUser, router]);
 
   // useEffect(() => {
   //   if (!currentUser) {
@@ -91,18 +122,18 @@ const StarRating = ({ score }: { score: number }) => {
   //   }
   // }, [currentUser, router]);
 
-  const cancelBooking = (id: number) => {
-    // const updated = myBookings.filter((b) => b.id !== id);
-    // setMyBookings(updated);
-    const updated = myBookings.map((b: any) =>
-      b.id === id ? { ...b, status: 'cancelled' } : b,
-    );
-    localStorage.setItem('vv_bookings', JSON.stringify(updated));
-    setMyBookings(updated);
-
-    // localStorage.setItem('vv_bookings', JSON.stringify(updated));
-
-    toast({ title: 'Booking cancelled', status: 'info' });
+  const cancelBooking = async (id: number) => {
+    try {
+      const updated = await apiFetch<any>(`${BOOKING_API}/bookings/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'cancelled' }),
+      });
+      setMyBookings((prev) => prev.map((b) => (b.id === id ? updated : b)));
+      toast({ title: 'Booking cancelled', status: 'info' });
+    } catch (err) {
+      console.error('Failed to cancel booking:', err);
+      toast({ title: 'Could not cancel booking', status: 'error' });
+    }
   };
 
   {

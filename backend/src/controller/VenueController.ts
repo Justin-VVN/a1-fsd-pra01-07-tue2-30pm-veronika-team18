@@ -6,8 +6,18 @@ export class VenueController {
   private venueRepository = AppDataSource.getRepository(Venue);
 
   async all(request: Request, response: Response) {
-    const venues = await this.venueRepository.find();
-    return response.json(venues);
+    const venues = await this.venueRepository.find({ relations: ["owner"] });
+
+    const result = venues.map((v) => {
+      const { owner, bookings, blockedDates, ...rest } = v as any;
+      return {
+        ...rest,
+        ownerId: owner?.id ?? null,
+        ownerFullname: owner?.fullName ?? null,
+      };
+    });
+
+    return response.json(result);
   }
 
   async one(request: Request, response: Response) {
@@ -15,13 +25,19 @@ export class VenueController {
 
     const venue = await this.venueRepository.findOne({
       where: { id },
+      relations: ["owner"],
     });
 
     if (!venue) {
       return response.status(404).json({ message: "Venue not found" });
     }
 
-    return response.json(venue);
+    const { owner, bookings, blockedDates, ...rest } = venue as any;
+    return response.json({
+      ...rest,
+      ownerId: owner?.id ?? null,
+      ownerFullname: owner?.fullName ?? null,
+    });
   }
 
   async save(request: Request, response: Response) {

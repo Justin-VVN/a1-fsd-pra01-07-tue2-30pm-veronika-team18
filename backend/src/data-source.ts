@@ -10,12 +10,13 @@ import { Document } from "./entity/Document";
 export const AppDataSource = new DataSource({
   type: 'mssql',
   host: 'dipto-database.cn2ems8y2mfe.ap-southeast-2.rds.amazonaws.com',
+  port: 1433,
   username: 's3969801',
   password: 'VuVuong123',
   database: 's3969801',
   options: {
     encrypt: false, // Use this for Azure SQL Database
-    //trustedConnection: false // Use this for Windows Authentication (if applicable)
+    trustServerCertificate: true, // Use this for Windows Authentication (if applicable)
   },
   // synchronize: true will automatically create database tables based on entity definitions
   // and update them when entity definitions change. This is useful during development

@@ -1,12 +1,14 @@
 'use client';
 
-import { Box, Button, FormControl, FormLabel, Select, Textarea, VStack,} 
-from '@chakra-ui/react';
-import { useState } from 'react';
+import { Box, Button, FormControl, FormLabel, Select, Textarea, VStack, useToast } from '@chakra-ui/react';
+import { useContext, useState } from 'react';
+import { REVIEW_API, apiFetch } from '@/lib/api';
+import { AppContext } from './store/ContextProvider';
 
 type Review = {
-  id: number;
+  id?: number;
   venueId: number;
+  hirerId?: string;
   rating: number;
   comment: string;
 };
@@ -14,36 +16,35 @@ type Review = {
 export default function WriteReview({ venueId }: { venueId: number }) {
   const [rating, setRating] = useState('');
   const [comment, setComment] = useState('');
+  const toast = useToast();
+  const { currentUser } = useContext(AppContext);
    
-   const handleSubmitReview = () => {
+  const handleSubmitReview = async () => {
     if (!rating || !comment.trim()) {
-      alert('Please enter your rating and comment.');
+      toast({ title: 'Please enter your rating and comment.', status: 'warning' });
       return;
     }
 
- const savedReviews = localStorage.getItem('vv_reviews');
-   let reviews: Review[] = [];
-
-    if (savedReviews) {
-  reviews = JSON.parse(savedReviews);
-   }
-
-     const newReview: Review = {
-    id: Date.now(),
-    venueId,
-    rating: Number(rating),
-    comment: comment.trim(),
+    const newReview: Review = {
+      venueId,
+      hirerId: currentUser?.id,
+      rating: Number(rating),
+      comment: comment.trim(),
     };
 
-reviews.push(newReview);
-
-localStorage.setItem('vv_reviews', JSON.stringify(reviews));
-    setRating('');
-    setComment('');
-    alert('Review submitted!');
-    window.location.reload();
-
-}
+    try {
+      await apiFetch<any>(`${REVIEW_API}/reviews`, {
+        method: 'POST',
+        body: JSON.stringify(newReview),
+      });
+      setRating('');
+      setComment('');
+      toast({ title: 'Review submitted!', status: 'success' });
+    } catch (err) {
+      console.error('Failed to submit review:', err);
+      toast({ title: 'Failed to submit review', status: 'error' });
+    }
+  };
 
 return (
   <Box mt={8}>

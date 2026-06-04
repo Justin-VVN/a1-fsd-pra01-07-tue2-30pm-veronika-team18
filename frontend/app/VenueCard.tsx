@@ -3,8 +3,20 @@
 import { Tabs, TabList, TabPanels, Tab, TabPanel, HStack, Text, Image, Box, VStack, Heading, Badge } from '@chakra-ui/react'
 import Link from 'next/link';
 
-export default function VenueCard(props) {
-    const { venue } = props;
+type Venue = {
+  id: number | string;
+  imgSrc?: string;
+  name: string;
+  location: string;
+  capacity: number;
+  price: number;
+};
+
+type VenueCardProps = {
+  venue: Venue;
+};
+
+export default function VenueCard({ venue }: VenueCardProps) {
 
     return (
         <Link href={`/venues/${venue.id}`} style={{ textDecoration: 'none' }}>

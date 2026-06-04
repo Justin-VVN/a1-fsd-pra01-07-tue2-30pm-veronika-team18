@@ -1,9 +1,9 @@
 export default interface Venue {
     id: number;
-    name: String;
+    name: string;
     ownerId: number;
-    imgSrc: String;
-    location: String;
+    imgSrc: string;
+    location: string;
     capacity: number;
     price: number;
 };
