@@ -17,7 +17,7 @@ import {
   useToast,
 } from '@chakra-ui/react';
 import { AppContext } from '../store/ContextProvider';
-import { BOOKING_API, VENUE_API, apiFetch } from '@/lib/api';
+import { BOOKING_API, apiFetch } from '@/lib/api';
 
 export default function MyBookingsPage() {
   const { currentUser } = useContext(AppContext);
@@ -28,37 +28,34 @@ export default function MyBookingsPage() {
 
   // Helper functions for ratings
   const getCompletedRatedBookings = (bookings: any[]) => {
-  return bookings.filter(
-    (booking) => booking.status === 'confirmed' && Number(booking.rating) > 0
-  );
-};
+    return bookings.filter(
+      (booking) => booking.status === 'confirmed' && Number(booking.rating) > 0,
+    );
+  };
 
-const getAverageRating = (bookings: any[]) => {
-  const ratedBookings = getCompletedRatedBookings(bookings);
+  const getAverageRating = (bookings: any[]) => {
+    const ratedBookings = getCompletedRatedBookings(bookings);
 
-  if (ratedBookings.length === 0) return 0;
+    if (ratedBookings.length === 0) return 0;
 
-  const total = ratedBookings.reduce(
-    (sum, booking) => sum + Number(booking.rating),
-    0
-  );
+    const total = ratedBookings.reduce(
+      (sum, booking) => sum + Number(booking.rating),
+      0,
+    );
 
-  return total / ratedBookings.length;
-};
+    return total / ratedBookings.length;
+  };
 
-const StarRating = ({ score }: { score: number }) => {
-  const rounded = Math.round(score);
+  const StarRating = ({ score }: { score: number }) => {
+    const rounded = Math.round(score);
 
-  return (
-    <Text fontSize="xl" color="yellow.400">
-      {'★'.repeat(rounded)}
-      {'☆'.repeat(5 - rounded)}
-    </Text>
-  );
-};
-
-
-
+    return (
+      <Text fontSize='xl' color='yellow.400'>
+        {'★'.repeat(rounded)}
+        {'☆'.repeat(5 - rounded)}
+      </Text>
+    );
+  };
 
   //defining booking history
   const bookingHistory = myBookings.filter(
@@ -68,43 +65,29 @@ const StarRating = ({ score }: { score: number }) => {
   const averageRating = getAverageRating(myBookings);
 
   useEffect(() => {
-    if (!currentUser) {
-      router.push('/signin');
-      return;
-    }
+    // if (!currentUser) {
+    //   router.push('/signin');
+    //   return;
+    // }
 
-    if (currentUser.type !== 'hirer') {
-      router.push('/vendor');
-      return;
-    }
+    if (!currentUser) return;
 
     const fetchBookings = async () => {
       try {
-        const bookings = await apiFetch<any[]>(`${BOOKING_API}/bookings`);
+        const bookings = await apiFetch<any[]>(
+          `${BOOKING_API}/bookings/hirer/${currentUser.id}`,
+        );
 
-        // filter bookings belonging to current user (supports hirer object or hirerId)
-        const filtered = bookings.filter((bk: any) => {
-          const hirerId = bk?.hirer?.id ?? bk?.hirerId ?? bk?.hirer_id;
-          return String(hirerId) === String(currentUser.id);
-        });
-
-        // try to enrich bookings with venue objects; backend may return venueId only
-        let venueMap = new Map<string, any>();
-        try {
-          const allVenues = await apiFetch<any[]>(`${VENUE_API}/venues`);
-          venueMap = new Map(allVenues.map((v: any) => [String(v.id), v]));
-        } catch (vErr) {
-          // if venue list fetch fails, we'll just fallback to placeholders
-          console.warn('Could not fetch venues for enrichment:', vErr);
-        }
-
-        const enriched = filtered.map((bk: any) => {
-          const venue = bk?.venue ?? venueMap.get(String(bk?.venueId)) ?? bk?.venue ?? null;
-          return {
-            ...bk,
-            venue: venue ?? { id: bk?.venueId ?? null, imgSrc: '/placeholder.png', name: 'Unknown Venue', location: '' },
-          };
-        });
+        // venue is already included via the backend relation; provide a fallback for safety
+        const enriched = bookings.map((bk: any) => ({
+          ...bk,
+          venue: bk.venue ?? {
+            id: bk.venueId ?? null,
+            imgSrc: '/placeholder.png',
+            name: 'Unknown Venue',
+            location: '',
+          },
+        }));
 
         setMyBookings(enriched);
       } catch (e) {
@@ -120,7 +103,12 @@ const StarRating = ({ score }: { score: number }) => {
   //   if (!currentUser) {
   //     router.push('/signin');
   //   }
-  // }, [currentUser, router]);
+
+  //   if (currentUser && currentUser.type !== 'hirer') {
+  //     router.push('/vendor');
+  //     return;
+  //   }
+  // }, [currentUser]);
 
   const cancelBooking = async (id: number) => {
     try {
@@ -139,29 +127,31 @@ const StarRating = ({ score }: { score: number }) => {
   {
     /*Preferences ranking section */
   }
- 
 
   if (!currentUser) {
     return <Text p={8}>Redirecting to sign in...</Text>;
   }
-  
-
 
   console.log(myBookings);
   const renderDocuments = (docs: any) => {
-    if (!docs) return <Text color="gray.400">No documents uploaded</Text>;
+    if (!docs) return <Text color='gray.400'>No documents uploaded</Text>;
 
     return (
-
-      <VStack align="start" spacing={4} mt={3}>
+      <VStack align='start' spacing={4} mt={3}>
         {/* Driver's License - Image */}
         {docs.driverLicense && (
           <Box>
-            <Text fontWeight="semibold" fontSize="sm" mb={1}>Driver's License</Text>
+            <Text fontWeight='semibold' fontSize='sm' mb={1}>
+              Driver's License
+            </Text>
             <img
               src={`data:image/jpeg;base64,${docs.driverLicense}`}
               alt="Driver's License"
-              style={{ maxWidth: '220px', borderRadius: '8px', border: '1px solid #ddd' }}
+              style={{
+                maxWidth: '220px',
+                borderRadius: '8px',
+                border: '1px solid #ddd',
+              }}
             />
           </Box>
         )}
@@ -169,11 +159,13 @@ const StarRating = ({ score }: { score: number }) => {
         {/* Public Liability Insurance - PDF */}
         {docs.publicLiabilityInsurance && (
           <Box>
-            <Text fontWeight="semibold" fontSize="sm" mb={1}>Public Liability Insurance</Text>
+            <Text fontWeight='semibold' fontSize='sm' mb={1}>
+              Public Liability Insurance
+            </Text>
             <Button
-              size="sm"
-              colorScheme="blue"
-              variant="outline"
+              size='sm'
+              colorScheme='blue'
+              variant='outline'
               onClick={() => {
                 const link = document.createElement('a');
                 link.href = `data:application/pdf;base64,${docs.publicLiabilityInsurance}`;
@@ -190,11 +182,13 @@ const StarRating = ({ score }: { score: number }) => {
         {/* Business Certificate - PDF */}
         {docs.businessCertificate && (
           <Box>
-            <Text fontWeight="semibold" fontSize="sm" mb={1}>Business Registration Certificate</Text>
+            <Text fontWeight='semibold' fontSize='sm' mb={1}>
+              Business Registration Certificate
+            </Text>
             <Button
-              size="sm"
-              colorScheme="blue"
-              variant="outline"
+              size='sm'
+              colorScheme='blue'
+              variant='outline'
               onClick={() => {
                 const link = document.createElement('a');
                 link.href = `data:application/pdf;base64,${docs.businessCertificate}`;
@@ -211,8 +205,10 @@ const StarRating = ({ score }: { score: number }) => {
         {/* ABN Number */}
         {docs.abnNumber && (
           <Box>
-            <Text fontWeight="semibold" fontSize="sm" mb={1}>ABN Number</Text>
-            <Text fontSize="lg" fontWeight="medium" color="blue.600">
+            <Text fontWeight='semibold' fontSize='sm' mb={1}>
+              ABN Number
+            </Text>
+            <Text fontSize='lg' fontWeight='medium' color='blue.600'>
               {docs.abnNumber}
             </Text>
           </Box>
@@ -226,24 +222,21 @@ const StarRating = ({ score }: { score: number }) => {
         My Bookings – Welcome, {currentUser.name}!
       </Heading>
 
+      {/*  section for hirer to view their reputation score */}
+      <Box bg='white' p={5} borderRadius='xl' boxShadow='md' mb={8}>
+        <Heading size='md' mb={2}>
+          My Hirer Reputation
+        </Heading>
 
-
-        {/*  section for hirer to view their reputation score */}
-        <Box bg="white" p={5} borderRadius="xl" boxShadow="md" mb={8}>
-         <Heading size="md" mb={2}>My Hirer Reputation</Heading>
-
-         {averageRating === 0 ? (
-         <Text color="gray.500">No ratings yet.</Text>
-         ) : (
-         <HStack>
-         <StarRating score={averageRating} />
-         <Text fontWeight="semibold">
-        {averageRating.toFixed(1)} / 5
-         </Text>
-        </HStack>
-             )}
-        </Box>
-
+        {averageRating === 0 ? (
+          <Text color='gray.500'>No ratings yet.</Text>
+        ) : (
+          <HStack>
+            <StarRating score={averageRating} />
+            <Text fontWeight='semibold'>{averageRating.toFixed(1)} / 5</Text>
+          </HStack>
+        )}
+      </Box>
 
       {myBookings.length === 0 ? (
         <Box textAlign='center' py={20}>
@@ -296,7 +289,7 @@ const StarRating = ({ score }: { score: number }) => {
 
                   <VStack align='start' spacing={2} fontSize='sm'>
                     <HStack>
-                      <Text fontWeight="semibold">Event Name:</Text>
+                      <Text fontWeight='semibold'>Event Name:</Text>
                       <Text>{booking.eventName || 'N/A'}</Text>
                     </HStack>
 
@@ -311,12 +304,12 @@ const StarRating = ({ score }: { score: number }) => {
                     </HStack>
 
                     <HStack>
-                      <Text fontWeight="semibold">Event Time:</Text>
+                      <Text fontWeight='semibold'>Event Time:</Text>
                       <Text>{booking.eventTime || 'N/A'}</Text>
                     </HStack>
 
                     <HStack>
-                      <Text fontWeight="semibold">Event Duration:</Text>
+                      <Text fontWeight='semibold'>Event Duration:</Text>
                       <Text>{booking.eventDuration || 'N/A'}</Text>
                     </HStack>
 
@@ -329,16 +322,17 @@ const StarRating = ({ score }: { score: number }) => {
                       <Text fontWeight='semibold'>Guests:</Text>
                       <Text>{booking.guests}</Text>
                     </HStack>
-                  
 
-                  <HStack>
-                 <Text fontWeight="semibold">Preference Rank:</Text>
-                 <Text>{booking.preferenceRank}</Text>
-                 </HStack>
+                    <HStack>
+                      <Text fontWeight='semibold'>Preference Rank:</Text>
+                      <Text>{booking.preferenceRank}</Text>
+                    </HStack>
                   </VStack>
 
-                  <Box pt={3} w="full">
-                    <Text fontWeight="semibold" mb={2}>Uploaded Documents</Text>
+                  <Box pt={3} w='full'>
+                    <Text fontWeight='semibold' mb={2}>
+                      Uploaded Documents
+                    </Text>
                     {renderDocuments(booking.additionalDocuments)}
                   </Box>
 
@@ -403,11 +397,11 @@ const StarRating = ({ score }: { score: number }) => {
                   <Text>
                     <strong>Date of Hire:</strong> {booking.checkIn}
                   </Text>
-                   <HStack>
-                     <Text fontWeight="semibold">Rating:</Text>
-                     <StarRating score={Number(booking.rating || 0)} />
-                     <Text>{booking.rating || 0} / 5</Text>
-                   </HStack>
+                  <HStack>
+                    <Text fontWeight='semibold'>Rating:</Text>
+                    <StarRating score={Number(booking.rating || 0)} />
+                    <Text>{booking.rating || 0} / 5</Text>
+                  </HStack>
                 </VStack>
               </Box>
             ))}

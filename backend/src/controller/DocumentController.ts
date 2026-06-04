@@ -1,6 +1,8 @@
 import { Request, Response } from "express";
 import { AppDataSource } from "../data-source";
 import { Document } from "../entity/Document";
+import path from "path";
+import fs from "fs";
 
 export class DocumentController {
   private documentRepository = AppDataSource.getRepository(Document);
@@ -109,8 +111,57 @@ export class DocumentController {
       return response.status(404).json({ message: "Document not found" });
     }
 
+    // Delete the physical file if it exists
+    if (documentToRemove.documentUrl) {
+      const filePath = path.join(
+        __dirname,
+        "../../",
+        documentToRemove.documentUrl
+      );
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
+
     await this.documentRepository.remove(documentToRemove);
 
     return response.json({ message: "Document removed successfully" });
+  }
+
+  async upload(request: Request, response: Response) {
+    // multer has already saved the file — req.file contains metadata
+    if (!request.file) {
+      return response.status(400).json({ message: "No file uploaded" });
+    }
+
+    const { bookingId, uploadedById, venueId, documentName, documentType, description } =
+      request.body;
+
+    if (!bookingId || !uploadedById || !venueId || !documentName || !documentType) {
+      // Clean up orphaned file
+      fs.unlinkSync(request.file.path);
+      return response.status(400).json({ message: "Missing required fields" });
+    }
+
+    // Store a relative URL served by express.static
+    const documentUrl = `uploads/${request.file.filename}`;
+
+    const document = Object.assign(new Document(), {
+      bookingId: parseInt(bookingId),
+      uploadedById: parseInt(uploadedById),
+      venueId: parseInt(venueId),
+      documentName,
+      documentType,
+      documentUrl,
+      description,
+    });
+
+    try {
+      const saved = await this.documentRepository.save(document);
+      return response.status(201).json(saved);
+    } catch (error) {
+      fs.unlinkSync(request.file.path);
+      return response.status(400).json({ message: "Error saving document record", error });
+    }
   }
 }

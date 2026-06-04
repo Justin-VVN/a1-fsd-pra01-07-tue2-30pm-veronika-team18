@@ -22,34 +22,29 @@ export default function SignIn() {
     }
 
     try {
-      const users = await apiFetch<any[]>(`${USER_API}/users`);
-      const user = users.find((u: any) => u.email === email && u.password === password);
+      const { token, user: currUser } = await apiFetch<{ token: string; user: any }>(`${USER_API}/login`, {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      });
 
-      if (user) {
-        const { password: _, ...currUser } = user;
-        setCurrentUser(currUser);
-        
-        toast({ 
-          title: `Welcome back, ${currUser.name || currUser.fullName || currUser.email}!`, 
-          status: 'success' 
-        });
+      localStorage.setItem('authToken', token);
+      setCurrentUser(currUser);
+      
+      toast({ 
+        title: `Welcome back, ${currUser.fullName || currUser.email}!`, 
+        status: 'success' 
+      });
 
-        if (currUser.type === 'vendor') {
-          router.push('/vendor');
-        } else {
-          router.push('/');
-        }
+      if (currUser.type === 'vendor') {
+        router.push('/vendor');
       } else {
-        toast({ 
-          title: 'Invalid email or password', 
-          status: 'error' 
-        });
+        router.push('/');
       }
     } catch (error) {
       console.error('Sign in error:', error);
       toast({ 
-        title: 'Network error', 
-        description: 'Could not connect to server. Make sure the backend is running on port 3001.', 
+        title: 'Invalid email or password', 
+        description: 'Please check your credentials and try again.', 
         status: 'error' 
       });
     }

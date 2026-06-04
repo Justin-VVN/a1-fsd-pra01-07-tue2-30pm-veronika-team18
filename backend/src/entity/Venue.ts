@@ -69,5 +69,11 @@ export class Venue {
   @AfterLoad()
   private _setOwnerFullname() {
     this.ownerFullname = this.owner?.fullName ?? null;
+
+    // this.venueOwner = {
+    //   name,
+    //   id,
+    //   age...
+    // }
   }
 }

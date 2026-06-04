@@ -10,6 +10,21 @@ export class BookingController {
     return response.json(bookings);
   }
 
+  async byHirer(request: Request, response: Response) {
+    const hirerId = parseInt(request.params.hirerId);
+
+    if (isNaN(hirerId)) {
+      return response.status(400).json({ message: "Invalid hirerId" });
+    }
+
+    const bookings = await this.bookingRepository.find({
+      where: { hirerId },
+      relations: ["venue"],
+    });
+
+    return response.json(bookings);
+  }
+
   async one(request: Request, response: Response) {
     const id = parseInt(request.params.id);
 

@@ -18,10 +18,13 @@ export default function Header() {
 
 
   const handleSignOut = () => {
+    localStorage.removeItem('authToken');
     setCurrentUser(null);
     router.push('/'); // go back to home
   };
   console.log(currentUser);
+
+  
   
   return (
     <Box as="header" bg="#E6787F;" color="white" py={4} px={8} boxShadow="md">
@@ -48,7 +51,7 @@ export default function Header() {
           {currentUser ? (
             <>
               <Text fontWeight="medium" fontSize="lg">
-                Welcome, <Link href={`/users/${currentUser.id}`}>{currentUser.name}</Link >
+                Welcome, <Link href={`/users/${currentUser.id}`}>{currentUser.fullName}</Link >
               </Text>
               <Button colorScheme="red" variant="solid"
               onClick={handleSignOut}

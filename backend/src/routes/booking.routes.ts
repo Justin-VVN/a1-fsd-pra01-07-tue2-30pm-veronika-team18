@@ -8,6 +8,10 @@ router.get("/bookings", async (req, res) => {
   await bookingController.all(req, res);
 });
 
+router.get("/bookings/hirer/:hirerId", async (req, res) => {
+  await bookingController.byHirer(req, res);
+});
+
 router.get("/bookings/:id", async (req, res) => {
   await bookingController.one(req, res);
 });

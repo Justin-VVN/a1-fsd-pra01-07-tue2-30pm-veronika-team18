@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { AppDataSource } from "../data-source";
 import { User } from "../entity/User";
+import bcrypt from "bcryptjs";
 
 export class UserController {
   private userRepository = AppDataSource.getRepository(User);
@@ -44,10 +45,13 @@ export class UserController {
   async save(request: Request, response: Response) {
     const { fullName, password, email, type } = request.body;
 
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     const user = Object.assign(new User(), {
       fullName,
       email,
-      password,
+      plaintextPassword: password,
+      password: hashedPassword,
       type,
     });
 
@@ -99,12 +103,13 @@ export class UserController {
       return response.status(404).json({ message: "User not found" });
     }
 
-    userToUpdate = Object.assign(userToUpdate, {
-      fullName,
-      email,
-      password,
-      type,
-    });
+    const updates: Partial<User> = { fullName, email, type };
+    if (password) {
+      updates.plaintextPassword = password;
+      updates.password = await bcrypt.hash(password, 10);
+    }
+
+    userToUpdate = Object.assign(userToUpdate, updates);
 
     try {
       const updatedUser = await this.userRepository.save(userToUpdate);

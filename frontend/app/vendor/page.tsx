@@ -55,17 +55,17 @@ export default function VenuesPage() {
   // useEffect(() => {
   //     if (!currentUser) router.push('/signin');
   // }, [currentUser, router]);
-  useEffect(() => {
-    if (!currentUser) {
-      router.push('/signin');
-      return;
-    }
+  // useEffect(() => {
+  //   if (!currentUser) {
+  //     router.push('/signin');
+  //     return;
+  //   }
 
-    if (currentUser.type !== 'vendor') {
-      router.push('/');
-      return;
-    }
-  }, [currentUser, router]);
+  //   if (currentUser.type !== 'vendor') {
+  //     router.push('/');
+  //     return;
+  //   }
+  // }, [currentUser, router]);
 
 
   // Load my posted venues

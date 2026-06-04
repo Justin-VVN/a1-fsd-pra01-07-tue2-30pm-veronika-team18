@@ -114,22 +114,6 @@ export default function VenueDetailPage({
 
 
   // Additional documents
-const toBase64 = (file: File): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        resolve(reader.result.split(',')[1]);
-      } else {
-        reject(new Error('Failed to read file'));
-      }
-    };
-
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-
   const calculateCredibility = async () => {
     const files = [
       driverLicenceInputRef.current?.files?.[0],
@@ -161,62 +145,24 @@ const toBase64 = (file: File): Promise<string> =>
     return;
     }
 
-    let driverBase64 = null;
-    let insuranceBase64 = null;
-    let businessCertBase64 = null;
-
-    if (driverLicenceInputRef.current?.files?.[0]) {
-      driverBase64 = await toBase64(driverLicenceInputRef.current.files[0]);
-      // console.log('file:', driverLicenceInputRef.current.files[0]);
-    }
-    if (insuranceInputRef.current?.files?.[0]) {
-      insuranceBase64 = await toBase64(insuranceInputRef.current.files[0]);
-      // console.log('file:', insuranceInputRef.current.files[0]);
-    }
-    if (businessCertInputRef.current?.files?.[0]) {
-      businessCertBase64 = await toBase64(businessCertInputRef.current.files[0]);
-      // console.log('file:', businessCertInputRef.current.files[0]);
-    }
-    
-
-
-
-    // if (driverLicenceInputRef.current) {
-    //   setCreditStar(0);
-    //   // console.log('file:', driverLicenceInputRef.current.files[0]); // File object
-    //   const file = driverLicenceInputRef.current.files[0];
-    //   if (!file) return;
-
-    //   base64 = await toBase64(file);
-    //   // console.log('base64:', base64);
-
-    // }
-
-    const additionalDocuments = {
-      driverLicense: driverBase64,
-      publicLiabilityInsurance: insuranceBase64,
-      businessCertificate: businessCertBase64,
-      abnNumber: isBusiness ? abnNumber : null,
-    };
-
-    const docCount = Object.values(additionalDocuments).filter(Boolean).length - (isBusiness ? 1 : 0);
-    let finalCreditStar = 0;
-    if (docCount === 1) finalCreditStar = 1;
-    if (docCount === 2) finalCreditStar = 3;
-    if (docCount >= 3) finalCreditStar = 5;
-
-
-
-    // auto calculate credit score based on the number of docs provided
-    // if 1 document: credit: 1
-    // if 2 docs: credit = 3
-    // if 3: credit = 5
-
     if (!currentUser?.id) {
       toast({ title: 'You must be signed in to make a reservation', status: 'error' });
       return;
     }
 
+    // Calculate credibility score from file inputs
+    const fileInputs = [
+      driverLicenceInputRef.current?.files?.[0],
+      insuranceInputRef.current?.files?.[0],
+      businessCertInputRef.current?.files?.[0],
+    ].filter(Boolean);
+    const docCount = fileInputs.length;
+    let finalCreditStar = 0;
+    if (docCount === 1) finalCreditStar = 1;
+    if (docCount === 2) finalCreditStar = 3;
+    if (docCount >= 3) finalCreditStar = 5;
+
+    // Step 1: Create the booking (no file data in this request)
     const newBooking = {
       hirerId: currentUser.id,
       venueId: venue?.id,
@@ -227,25 +173,16 @@ const toBase64 = (file: File): Promise<string> =>
       eventName,
       eventTime,
       eventDuration: duration,
-      pricePerNight,
       total: totalAfterDiscount,
       status: 'pending',
-      additionalDocuments,
-      creditStar: finalCreditStar,
       preferenceRank: Number(preferenceRank),
     };
 
+    let savedBooking: any;
     try {
-      await apiFetch<any>(`${BOOKING_API}/bookings`, {
+      savedBooking = await apiFetch<any>(`${BOOKING_API}/bookings`, {
         method: 'POST',
         body: JSON.stringify(newBooking),
-      });
-
-      toast({
-        title: 'Reservation request submitted!',
-        description: `Booking for ${venue?.name} has been saved.`,
-        status: 'success',
-        duration: 5000,
       });
     } catch (err) {
       console.error('Failed to submit reservation:', err);
@@ -257,12 +194,68 @@ const toBase64 = (file: File): Promise<string> =>
       return;
     }
 
+    // Step 2: Upload each document file separately via multipart/form-data
+    const documentUploads: { file: File; name: string; type: string; description?: string }[] = [];
+
+    if (driverLicenceInputRef.current?.files?.[0]) {
+      documentUploads.push({
+        file: driverLicenceInputRef.current.files[0],
+        name: "Driver's License",
+        type: 'other',
+      });
+    }
+    if (insuranceInputRef.current?.files?.[0]) {
+      documentUploads.push({
+        file: insuranceInputRef.current.files[0],
+        name: 'Public Liability Insurance',
+        type: 'policy',
+      });
+    }
+    if (businessCertInputRef.current?.files?.[0]) {
+      documentUploads.push({
+        file: businessCertInputRef.current.files[0],
+        name: 'Business Registration Certificate',
+        type: 'contract',
+        description: isBusiness && abnNumber ? `ABN: ${abnNumber}` : undefined,
+      });
+    }
+
+    const token = localStorage.getItem('authToken');
+    for (const doc of documentUploads) {
+      const formData = new FormData();
+      formData.append('file', doc.file);
+      formData.append('bookingId', String(savedBooking.id));
+      formData.append('uploadedById', String(currentUser.id));
+      formData.append('venueId', String(venue?.id));
+      formData.append('documentName', doc.name);
+      formData.append('documentType', doc.type);
+      if (doc.description) formData.append('description', doc.description);
+
+      try {
+        // Use raw fetch — do NOT set Content-Type so the browser sets the multipart boundary
+        await fetch(`${BOOKING_API}/documents/upload`, {
+          method: 'POST',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          body: formData,
+        });
+      } catch (err) {
+        console.error(`Failed to upload ${doc.name}:`, err);
+      }
+    }
+
+    toast({
+      title: 'Reservation request submitted!',
+      description: `Booking for ${venue?.name} has been saved.`,
+      status: 'success',
+      duration: 5000,
+    });
+
     // Reset form
     setCheckIn('');
     setCheckOut('');
     setGuests(1);
     setDiscount({ valid: false, percentage: 0, amount: 0 });
-    setCreditStar(0);
+    setCreditStar(finalCreditStar);
     setIsBusiness(false); setAbnNumber('');
     setPreferenceRank('');
     if (driverLicenceInputRef.current) driverLicenceInputRef.current.value = '';
@@ -294,6 +287,10 @@ const toBase64 = (file: File): Promise<string> =>
       </Box>
     );
 
+  
+  console.log('venue', venue);
+  
+
   return (
     <Box maxW='7xl' mx='auto' px={8} py={12}>
       <Flex gap={12} flexWrap='wrap'>
@@ -315,9 +312,9 @@ const toBase64 = (file: File): Promise<string> =>
             </Badge>
             <Text fontSize='lg'>Capacity: {venue.capacity} guests</Text>
           </HStack>
-          {/* <Text fontSize='lg' color='gray.700'>
-            Owner: {venue.owner?.name ?? venue.ownerId ?? 'Unknown'} */}    
-          {/* </Text> */}
+          <Text fontSize='lg' color='gray.700'>
+            Owner: {venue.ownerFullname}  
+          </Text>
           <Text fontSize='lg' color='gray.700'>
             Perfect for your next event in Melbourne.
           </Text>
