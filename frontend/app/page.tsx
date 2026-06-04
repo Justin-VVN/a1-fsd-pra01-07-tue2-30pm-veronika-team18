@@ -20,8 +20,8 @@ type Venue = {
 };
 
 export default function HomePage() {
-  const [venues, setVenues] = useState([]);
-  const [allVenues, setAllVenues] = useState([]);
+  const [venues, setVenues] = useState<Venue[]>([]);
+  const [allVenues, setAllVenues] = useState<Venue[]>([]);
 const [loading, setLoading] = useState(true);
 const [error, setError] = useState<string | null>(null);
   // Fetch venues from backend API

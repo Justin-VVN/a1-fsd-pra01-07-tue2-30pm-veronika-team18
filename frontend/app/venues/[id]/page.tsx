@@ -108,19 +108,27 @@ export default function VenueDetailPage({
 
   const minStartDate = new Date().toISOString().split('T')[0];
 
-  const driverLicenceInputRef = useRef(null);
-  const insuranceInputRef = useRef(null);
-  const businessCertInputRef = useRef(null);
+  const driverLicenceInputRef = useRef<HTMLInputElement | null>(null);
+  const insuranceInputRef = useRef<HTMLInputElement | null>(null);
+  const businessCertInputRef = useRef<HTMLInputElement | null>(null);
 
 
   // Additional documents
-  const toBase64 = (file: File) =>
-    new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result.split(',')[1]);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
+const toBase64 = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result.split(',')[1]);
+      } else {
+        reject(new Error('Failed to read file'));
+      }
+    };
+
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 
   const calculateCredibility = async () => {
     const files = [

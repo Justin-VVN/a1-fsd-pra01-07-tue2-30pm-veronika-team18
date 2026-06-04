@@ -2,6 +2,7 @@
 
 import { AppContext } from '@/app/store/ContextProvider';
 import { use } from 'react';
+import type { FormEvent } from "react";
 import { USER_API, apiFetch } from '@/lib/api';
 
 import {
@@ -22,8 +23,8 @@ export default function UserPage({
   const toast = useToast();
   const { currentUser, setCurrentUser } = use(AppContext);
 
-  const onSave = async (evt) => {
-    evt.preventDefault();
+const onSave = async (evt: FormEvent<HTMLFormElement>) => {
+      evt.preventDefault();
 
     const updatedUserFormData = Object.fromEntries(
       new FormData(evt.currentTarget).entries(),
