@@ -26,6 +26,7 @@ import {
   Progress,
 } from '@chakra-ui/react';
 import { AppContext } from '../store/ContextProvider';
+import { VENUE_API, BOOKING_API, USER_API, apiFetch } from '@/lib/api';
 
 export default function VenuesPage() {
   const { currentUser } = useContext(AppContext);
@@ -55,46 +56,108 @@ export default function VenuesPage() {
   //     if (!currentUser) router.push('/signin');
   // }, [currentUser, router]);
   useEffect(() => {
-  const storedUser = localStorage.getItem('vv_currentUser');
+    if (!currentUser) {
+      router.push('/signin');
+      return;
+    }
 
-  if (!storedUser) {
-    router.push('/signin');
-    return;
-  }
-
-  const user = JSON.parse(storedUser);
-
-  if (user.role !== 'vendor') {
-    router.push('/users');
-  }
-  }, [router]);
-
+    if (currentUser.type !== 'vendor') {
+      router.push('/');
+      return;
+    }
+  }, [currentUser, router]);
 
 
   // Load my posted venues
   useEffect(() => {
     if (!currentUser?.id) return;
-    const saved = localStorage.getItem('vv_venues') || '[]';
-    const all = JSON.parse(saved);
-    setMyVenues(all.filter((v: any) => v.owner?.id === currentUser.id));
+
+    const fetchVenues = async () => {
+      try {
+        const allVenues = await apiFetch<any[]>(`${VENUE_API}/venues`);
+        const mine = allVenues.filter((v: any) => {
+          const ownerId = v?.owner?.id ?? v?.ownerId ?? v?.owner_id;
+          return String(ownerId) === String(currentUser.id);
+        });
+        setMyVenues(mine);
+      } catch (err) {
+        console.error('Failed to load venues for vendor:', err);
+        setMyVenues([]);
+      }
+    };
+
+    fetchVenues();
   }, [currentUser]);
 
   // Load booking requests for my venues
   useEffect(() => {
     if (!currentUser?.id) return;
-    const saved = localStorage.getItem('vv_bookings') || '[]';
-    const allBookings = JSON.parse(saved);
-    const mine = allBookings.filter(
-      (b: any) => b.venue.owner?.id === currentUser.id,
-    );
-    setBookingRequests(mine);
+
+    const fetchBookings = async () => {
+      try {
+        const [allBookings, allVenues, allUsers] = await Promise.all([
+          apiFetch<any[]>(`${BOOKING_API}/bookings`),
+          apiFetch<any[]>(`${VENUE_API}/venues`).catch((e) => {
+            console.warn('Could not fetch venues for vendor enrichment', e);
+            return [] as any[];
+          }),
+          apiFetch<any[]>(`${USER_API}/users`).catch((e) => {
+            console.warn('Could not fetch users for vendor enrichment', e);
+            return [] as any[];
+          }),
+        ]);
+
+        const venueMap = new Map((allVenues || []).map((v: any) => [String(v.id), v]));
+        const userMap = new Map((allUsers || []).map((u: any) => [String(u.id), u]));
+
+        const mine = allBookings.filter((b: any) => {
+          // try nested venue owner
+          const nestedOwnerId = b?.venue?.owner?.id ?? b?.venue?.ownerId ?? b?.venue?.owner_id;
+
+          if (nestedOwnerId) return String(nestedOwnerId) === String(currentUser.id);
+
+          // fallback: lookup venue by id
+          const venueId = b?.venue?.id ?? b?.venueId ?? b?.venue_id;
+          const venue = venueId ? venueMap.get(String(venueId)) : null;
+          const ownerId = venue?.owner?.id ?? venue?.ownerId ?? venue?.owner_id;
+          return ownerId ? String(ownerId) === String(currentUser.id) : false;
+        });
+
+        // enrich bookings with venue objects when missing
+        const enriched = mine.map((bk: any) => {
+          const venueId = bk?.venue?.id ?? bk?.venueId ?? bk?.venue_id;
+          const venue = bk?.venue ?? (venueId ? venueMap.get(String(venueId)) : null) ?? null;
+
+          const hirerId = bk?.hirer?.id ?? bk?.hirerId ?? bk?.hirer_id;
+          const hirer = bk?.hirer ?? (hirerId ? userMap.get(String(hirerId)) : null) ?? { id: hirerId ?? null, name: 'Unknown Hirer' };
+
+          return { ...bk, venue: venue ?? { id: venueId ?? null, imgSrc: '/placeholder.png', name: 'Unknown Venue', location: '' }, hirer };
+        });
+
+        setBookingRequests(enriched);
+      } catch (err) {
+        console.error('Failed to load booking requests:', err);
+        setBookingRequests([]);
+      }
+    };
+
+    fetchBookings();
   }, [currentUser]);
 
 
-  //Load blocked dates for my venues
+  // Load blocked dates for my venues
   useEffect(() => {
-    const savedBlockedDates = localStorage.getItem('vv_blocked_dates') || '[]';
-    setBlockedDates(JSON.parse(savedBlockedDates));
+    const fetchBlockedDates = async () => {
+      try {
+        const dates = await apiFetch<any[]>(`${VENUE_API}/blocked-dates`);
+        setBlockedDates(dates || []);
+      } catch (err) {
+        console.error('Failed to load blocked dates:', err);
+        setBlockedDates([]);
+      }
+    };
+
+    fetchBlockedDates();
   }, []);
 
   const getCredibilityScore = (docs: any): number => {
@@ -113,12 +176,11 @@ export default function VenuesPage() {
   );
 
   const getHirerBookings = (hirerId: string) => {
-  const allBookings = JSON.parse(localStorage.getItem('vv_bookings') || '[]');
-
-  return allBookings.filter(
-    (booking: any) => booking.hirer?.id === hirerId
-  );
-};
+    return bookingRequests.filter((booking: any) => {
+      const id = booking?.hirer?.id ?? booking?.hirerId ?? booking?.hirer_id;
+      return String(id) === String(hirerId);
+    });
+  };
 
 const getHirerAverageRating = (hirerId: string) => {
   const hirerBookings = getHirerBookings(hirerId);
@@ -160,17 +222,20 @@ const getHirerAverageRating = (hirerId: string) => {
       reason: blockForm.reason,
     };
 
-    const savedBlockedDates = JSON.parse(
-      localStorage.getItem('vv_blocked_dates') || '[]'
-    );
+    const saveBlockedDates = async () => {
+      try {
+        const updated = await apiFetch<any>(`${VENUE_API}/blocked-dates`, {
+          method: 'POST',
+          body: JSON.stringify(newBlockedPeriod),
+        });
+        setBlockedDates((prev) => [...prev, updated]);
+      } catch (err) {
+        console.error('Failed to save blocked date:', err);
+        toast({ title: 'Failed to block venue', status: 'error' });
+      }
+    };
 
-    savedBlockedDates.push(newBlockedPeriod);
-    localStorage.setItem(
-      'vv_blocked_dates',
-      JSON.stringify(savedBlockedDates)
-    );
-
-    setBlockedDates(savedBlockedDates);
+    saveBlockedDates();
 
     setBlockForm({
       venueId: '',
@@ -189,8 +254,8 @@ const getHirerAverageRating = (hirerId: string) => {
     const hirerStats: { [key: string]: { name: string; accepted: number; total: number } } = {};
 
     bookingRequests.forEach((req) => {
-      const hirerId = req.hirer?.id || req.hirer.name;
-      const hirerName = req.hirer.name || 'Unknown Hirer';
+      const hirerId = req.hirer?.id ?? req.hirerId ?? req.hirer_id ?? req.hirer?.name;
+      const hirerName = req.hirer?.name ?? 'Unknown Hirer';
 
       if (!hirerStats[hirerId]) {
         hirerStats[hirerId] = { name: hirerName, accepted: 0, total: 0 };
@@ -218,81 +283,93 @@ const getHirerAverageRating = (hirerId: string) => {
   };
   const { mostChosen, leastChosen, neverSelected } = getHirerInsights();
   
-  const handlePostVenue = (e: React.FormEvent) => {
+  const handlePostVenue = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser) return;
 
     const newVenue = {
-      id: Date.now(),
       name: form.name,
       imgSrc: form.imgSrc,
       location: form.location,
       capacity: Number(form.capacity),
       price: Number(form.price),
-      owner: currentUser,
+      ownerId: currentUser.id,
     };
 
-    const saved = JSON.parse(localStorage.getItem('vv_venues') || '[]');
-    saved.push(newVenue);
-    localStorage.setItem('vv_venues', JSON.stringify(saved));
-    setMyVenues((prev) => [...prev, newVenue]);
+    try {
+      const created = await apiFetch<any>(`${VENUE_API}/venues`, {
+        method: 'POST',
+        body: JSON.stringify(newVenue),
+      });
+      setMyVenues((prev) => [...prev, created]);
 
-    toast({ title: 'Venue posted!', status: 'success' });
-    setForm({ name: '', imgSrc: '', location: '', capacity: '', price: '' });
+      toast({ title: 'Venue posted!', status: 'success' });
+      setForm({ name: '', imgSrc: '', location: '', capacity: '', price: '' });
+    } catch (err) {
+      console.error('Failed to post venue:', err);
+      toast({ title: 'Could not post venue', status: 'error' });
+    }
   };
 
-  const acceptBooking = (bookingId: number) => {
-    const allBookings = JSON.parse(localStorage.getItem('vv_bookings') || '[]');
-    const updated = allBookings.map((b: any) =>
-      b.id === bookingId ? { ...b, status: 'confirmed'} : b,
-    );
-    localStorage.setItem('vv_bookings', JSON.stringify(updated));
-    setBookingRequests((prev) =>
-      prev.map((b) => (b.id === bookingId ? { ...b, status: 'confirmed'} : b)),
-    );
-    toast({ title: 'Booking accepted!', status: 'success' });
+  const acceptBooking = async (bookingId: number) => {
+    try {
+      const payload = { status: 'confirmed' };
+      // Keep only the working endpoint: PUT /bookings/:id
+      const updatedBooking = await apiFetch<any>(`${BOOKING_API}/bookings/${bookingId}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      });
+
+      setBookingRequests((prev) => prev.map((b) => (b.id === bookingId ? { ...updatedBooking, venue: b.venue ?? updatedBooking.venue, hirer: updatedBooking.hirer ?? b.hirer } : b)));
+      toast({ title: 'Booking accepted', status: 'success' });
+    } catch (err) {
+      console.error('Failed to accept booking (PUT):', err);
+      const msg = err instanceof Error ? err.message : String(err);
+      toast({ title: 'Could not accept booking', description: msg, status: 'error', duration: 9000 });
+    }
   };
 
-  const rejectBooking = (bookingId: number) => {
-    const allBookings = JSON.parse(localStorage.getItem('vv_bookings') || '[]');
-    const updated = allBookings.map((b: any) =>
-      b.id === bookingId ? { ...b, status: 'rejected' } : b,
-    );
-    localStorage.setItem('vv_bookings', JSON.stringify(updated));
-    setBookingRequests(updated);
-    toast({ title: 'Booking rejected', status: 'info' });
+  const rejectBooking = async (bookingId: number) => {
+    try {
+      const updatedBooking = await apiFetch<any>(`${BOOKING_API}/bookings/${bookingId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'rejected' }),
+      });
+
+      setBookingRequests((prev) =>
+        prev.map((b) => (b.id === bookingId ? updatedBooking : b)),
+      );
+      toast({ title: 'Booking rejected', status: 'info' });
+    } catch (err) {
+      console.error('Failed to reject booking:', err);
+      toast({ title: 'Could not reject booking', status: 'error' });
+    }
   };
   
   //Hirer rating section
-  const rateHirer = (bookingId: number, rating: number) => {
-  const allBookings = JSON.parse(
-    localStorage.getItem('vv_bookings') || '[]'
-  );
+  const rateHirer = async (bookingId: number, rating: number) => {
+    try {
+      const updatedBooking = await apiFetch<any>(`${BOOKING_API}/bookings/${bookingId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ rating }),
+      });
 
-  const updated = allBookings.map((b: any) =>
-    b.id === bookingId
-      ? { ...b, rating }
-      : b
-  );
+      setBookingRequests((prev) =>
+        prev.map((b) => (b.id === bookingId ? updatedBooking : b)),
+      );
 
-  localStorage.setItem('vv_bookings', JSON.stringify(updated));
-
-  setBookingRequests((prev) =>
-    prev.map((b) =>
-      b.id === bookingId
-        ? { ...b, rating }
-        : b
-    )
-  );
-
-  toast({
-    title: `Hirer rated ${rating} stars`,
-    status: 'success',
-  });
+      toast({
+        title: `Hirer rated ${rating} stars`,
+        status: 'success',
+      });
+    } catch (err) {
+      console.error('Failed to rate hirer:', err);
+      toast({ title: 'Could not rate hirer', status: 'error' });
+    }
   };
 
 
-  if (!currentUser || currentUser.role !== 'vendor') return <Text p={8}>Redirecting...</Text>;
+  if (!currentUser || currentUser.type !== 'vendor') return <Text p={8}>Redirecting...</Text>;
   const renderDocuments = (docs: any) => {
     if (!docs) return <Text color="gray.400">No documents uploaded</Text>;
 

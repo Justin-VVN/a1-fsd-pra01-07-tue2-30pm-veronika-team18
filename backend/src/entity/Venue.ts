@@ -5,24 +5,29 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToMany,
+  ManyToOne,
+  JoinColumn,
+  RelationId,
+  AfterLoad,
 } from 'typeorm';
 
 //importing entities for the relationships
 import { Booking } from "./Booking";
 import { BlockedDate } from "./BlockedDate";
+import { User } from './User';
 
 @Entity()
 export class Venue {
   @PrimaryGeneratedColumn()
   id: number;
-  
+
   //name of the place
   @Column()
   name: string;
- 
-  @Column()
-  ownerId: number;
- 
+
+  // @Column()
+  // ownerId: number;
+
   //image source for the venue card
   @Column()
   imgSrc: string;
@@ -49,4 +54,20 @@ export class Venue {
   // One venue can have many blocked dates/timeslots
   @OneToMany(() => BlockedDate, (blockedDate) => blockedDate.venue)
   blockedDates: BlockedDate[];
+
+  @ManyToOne(() => User, (owner) => owner.venues, { onDelete: 'CASCADE', eager: true })
+  @JoinColumn({ name: 'ownerId' })
+  owner: User;
+
+  // store owner id from relation
+  @RelationId((venue: Venue) => venue.owner)
+  ownerId: number;
+
+  // transient field populated after load for convenience in responses
+  ownerFullname: string | null;
+
+  @AfterLoad()
+  private _setOwnerFullname() {
+    this.ownerFullname = this.owner?.fullName ?? null;
+  }
 }

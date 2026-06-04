@@ -1,53 +1,54 @@
 'use client';
 
-import {Box, Heading, Text} from '@chakra-ui/react';
+import { Box, Heading, Text } from '@chakra-ui/react';
+import { useEffect, useState } from 'react';
+import { REVIEW_API, apiFetch } from '@/lib/api';
 
 type Review = {
-  id: number;
+  id?: number;
   venueId: number;
   rating: number;
   comment: string;
 };
 
 export default function VenueReviews({ venueId }: { venueId: number }) {
-  let reviews: Review[] = []; // empty list to hold reviews
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [averageRating, setAverageRating] = useState('0');
 
+  useEffect(() => {
+    const fetchReviews = async () => {
+      try {
+        const allReviews = await apiFetch<Review[]>(`${REVIEW_API}/reviews`);
+        const filtered = allReviews.filter((r) => r.venueId === venueId);
+        setReviews(filtered);
 
-  if (typeof window !== 'undefined') { //to check if we're in the browser, fetching reviews from localStorage
-    //loads reviews from localStorage
-    const savedReviews = localStorage.getItem('vv_reviews');
-    if (savedReviews) {
-        reviews = JSON.parse(savedReviews);
-    }
+        if (filtered.length > 0) {
+          const avg = (
+            filtered.reduce((sum, r) => sum + r.rating, 0) / filtered.length
+          ).toFixed(1);
+          setAverageRating(avg);
+        } else {
+          setAverageRating('0');
+        }
+      } catch (err) {
+        console.error('Failed to load reviews:', err);
+        setReviews([]);
+        setAverageRating('0');
+      }
+    };
+
+    fetchReviews();
+  }, [venueId]);
+
+  return (
+    <Box mt={16}>
+      <Heading size="lg">Reviews</Heading>
+      <Text>
+        {averageRating} / 5 ({reviews.length} reviews)
+      </Text>
+
+      {reviews.length === 0 && <Text>No reviews yet.</Text>}
+    </Box>
+  );
 }
-
-//filter reviews for only the current venue 
-const venueReviews = reviews.filter(review => review.venueId === venueId);
-
-//calcuating the average rating
-const averageRating = venueReviews.length > 0
-? (venueReviews.reduce((sum, review) => sum + review.rating, 0) / venueReviews.length).toFixed(1)
-: '0';
-
-
-//ratings and reviews layout
-return (
-  <Box mt={16}>
-    <Heading size="lg">Reviews</Heading>
-    <Text>
-      {averageRating} / 5 ({venueReviews.length} reviews)
-    </Text>
-
-    {venueReviews.length === 0 && (
-      <Text>No reviews yet.</Text>
-    )}
-  </Box>
-);
-
-
-
-}
-
-
-
 

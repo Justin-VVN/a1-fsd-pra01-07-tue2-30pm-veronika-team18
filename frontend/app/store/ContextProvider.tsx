@@ -1,10 +1,13 @@
 'use client';
 
-import { createContext, use, useEffect, useState } from 'react';
+import { createContext, useEffect, useState } from 'react';
 
-export const AppContext = createContext({});
+export const AppContext = createContext<{
+  currentUser: any;
+  setCurrentUser: (user: any) => void;
+}>({} as any);
 
-export default function ContextProvider({ children }) {
+export default function ContextProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState(null);
   
   const contextValue = {
@@ -12,13 +15,5 @@ export default function ContextProvider({ children }) {
     setCurrentUser,
   };
 
-  useEffect(() => {
-    const lsUser = localStorage.getItem('vv_currentUser');
-    if (lsUser) {
-      const currUser = JSON.parse(lsUser);
-      setCurrentUser(currUser);
-    }
-  }, []);
-
-  return <AppContext value={contextValue}>{children}</AppContext>;
+  return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
 }

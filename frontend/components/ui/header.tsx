@@ -18,7 +18,6 @@ export default function Header() {
 
 
   const handleSignOut = () => {
-    localStorage.removeItem('vv_currentUser');
     setCurrentUser(null);
     router.push('/'); // go back to home
   };
@@ -34,11 +33,11 @@ export default function Header() {
         <Spacer />
         <HStack spacing={6} fontWeight="medium">
           <Link href="/">Home</Link>
-        {currentUser?.role === 'vendor' && (
+        {currentUser?.type === 'vendor' && (
          <Link href="/vendor">Vendor</Link>
         )}
 
-        {currentUser?.role === 'hirer' && (
+        {currentUser?.type === 'hirer' && (
          <Link href="/bookings">My Bookings</Link>
         )}
         </HStack>

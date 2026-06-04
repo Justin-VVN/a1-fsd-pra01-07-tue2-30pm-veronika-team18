@@ -29,6 +29,7 @@ import {
 } from '@chakra-ui/react';
 import { AddIcon, MinusIcon } from '@chakra-ui/icons';
 import { AppContext } from '@/app/store/ContextProvider';
+import { VENUE_API, BOOKING_API, apiFetch } from '@/lib/api';
 
 import VenueReviews from '@/app/venueReviews'; //importing the venueReviews component for display
 import WriteReview from '@/app/writeVenueReview';
@@ -66,14 +67,21 @@ export default function VenueDetailPage({
   const [preferenceRank, setPreferenceRank] = useState(''); //for ranking booking preferences
 
   useEffect(() => {
-    const savedVenues = localStorage.getItem('vv_venues');
-    let allVenues: Venue[] = savedVenues ? JSON.parse(savedVenues) : venues;
+    const fetchVenue = async () => {
+      try {
+        const found = await apiFetch<Venue>(`${VENUE_API}/venues/${id}`);
+        if (!found) {
+          notFound();
+          return;
+        }
+        setVenue(found);
+      } catch (err) {
+        console.error('Failed to load venue:', err);
+        notFound();
+      }
+    };
 
-    const found = allVenues.find((v) => v.id === Number(id));
-    if (!found) notFound();
-    setVenue(found);
-
-    console.log('venue:', found);
+    fetchVenue();
   }, [id]);
 
   const nights =
@@ -196,18 +204,21 @@ export default function VenueDetailPage({
     // if 2 docs: credit = 3
     // if 3: credit = 5
 
-    const bookings = JSON.parse(localStorage.getItem('vv_bookings') || '[]');
+    if (!currentUser?.id) {
+      toast({ title: 'You must be signed in to make a reservation', status: 'error' });
+      return;
+    }
+
     const newBooking = {
-      id: Date.now(),
-      hirer: currentUser,
-      venue: venue,
+      hirerId: currentUser.id,
+      venueId: venue?.id,
       checkIn,
       checkOut,
       nights,
       guests,
       eventName,
       eventTime,
-      duration,
+      eventDuration: duration,
       pricePerNight,
       total: totalAfterDiscount,
       status: 'pending',
@@ -216,15 +227,27 @@ export default function VenueDetailPage({
       preferenceRank: Number(preferenceRank),
     };
 
-    bookings.push(newBooking);
-    localStorage.setItem('vv_bookings', JSON.stringify(bookings));
+    try {
+      await apiFetch<any>(`${BOOKING_API}/bookings`, {
+        method: 'POST',
+        body: JSON.stringify(newBooking),
+      });
 
-    toast({
-      title: 'Reservation request submitted!',
-      description: `Booking for ${venue?.name} has been saved.`,
-      status: 'success',
-      duration: 5000,
-    });
+      toast({
+        title: 'Reservation request submitted!',
+        description: `Booking for ${venue?.name} has been saved.`,
+        status: 'success',
+        duration: 5000,
+      });
+    } catch (err) {
+      console.error('Failed to submit reservation:', err);
+      toast({
+        title: 'Reservation failed',
+        description: 'Could not submit booking. Please try again.',
+        status: 'error',
+      });
+      return;
+    }
 
     // Reset form
     setCheckIn('');
@@ -284,9 +307,9 @@ export default function VenueDetailPage({
             </Badge>
             <Text fontSize='lg'>Capacity: {venue.capacity} guests</Text>
           </HStack>
-          <Text fontSize='lg' color='gray.700'>
-            Owner: {venue.owner.name}
-          </Text>
+          {/* <Text fontSize='lg' color='gray.700'>
+            Owner: {venue.owner?.name ?? venue.ownerId ?? 'Unknown'} */}    
+          {/* </Text> */}
           <Text fontSize='lg' color='gray.700'>
             Perfect for your next event in Melbourne.
           </Text>

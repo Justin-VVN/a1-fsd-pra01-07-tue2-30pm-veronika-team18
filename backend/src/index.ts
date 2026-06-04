@@ -23,8 +23,17 @@ app.use("/api", documentRoutes);
 AppDataSource.initialize()
   .then(() => {
     console.log("Data Source has been initialized!");
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);
+    });
+
+    server.on('error', (error: any) => {
+      if (error.code === 'EADDRINUSE') {
+        console.error(`Port ${PORT} is already in use. Stop the other process or set PORT to a different value.`);
+      } else {
+        console.error("Server failed to start:", error);
+      }
+      process.exit(1);
     });
   })
   .catch((error) =>

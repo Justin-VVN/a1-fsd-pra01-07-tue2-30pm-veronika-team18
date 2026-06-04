@@ -4,6 +4,7 @@ import { useContext, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Box, Heading, FormControl, FormLabel, Input, Button, VStack, Text, useToast } from '@chakra-ui/react';
 import { AppContext } from '../store/ContextProvider';
+import { USER_API, apiFetch } from '@/lib/api';
 export default function SignIn() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -12,30 +13,45 @@ export default function SignIn() {
   const { currentUser, setCurrentUser } = useContext(AppContext);
 
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const users = JSON.parse(localStorage.getItem('vv_users') || '[]');
-    const user = users.find((u: any) => u.email === email && u.password === password);
+    if (!email || !password) {
+      toast({ title: 'Please fill in all fields', status: 'error' });
+      return;
+    }
 
-      //redirecting to either vendor or hirer dashboard based on role
-     localStorage.setItem('vv_currentUser', JSON.stringify(user));
-     setCurrentUser(user);
+    try {
+      const users = await apiFetch<any[]>(`${USER_API}/users`);
+      const user = users.find((u: any) => u.email === email && u.password === password);
 
-      if (user.role === 'vendor') {
-      router.push('/vendor');
+      if (user) {
+        const { password: _, ...currUser } = user;
+        setCurrentUser(currUser);
+        
+        toast({ 
+          title: `Welcome back, ${currUser.name || currUser.fullName || currUser.email}!`, 
+          status: 'success' 
+        });
+
+        if (currUser.type === 'vendor') {
+          router.push('/vendor');
+        } else {
+          router.push('/');
+        }
       } else {
-      router.push('/users');
+        toast({ 
+          title: 'Invalid email or password', 
+          status: 'error' 
+        });
       }
-
-    if (user) {
-      const { password, ...currUser } = user;
-      localStorage.setItem('vv_currentUser', JSON.stringify(currUser));
-      toast({ title: `Welcome back, ${user.name}!`, status: 'success' });
-      setCurrentUser(currUser);
-      router.push('/'); // redirect to home
-    } else {
-      toast({ title: 'Invalid email or password', status: 'error' });
+    } catch (error) {
+      console.error('Sign in error:', error);
+      toast({ 
+        title: 'Network error', 
+        description: 'Could not connect to server. Make sure the backend is running on port 3002.', 
+        status: 'error' 
+      });
     }
   };
 

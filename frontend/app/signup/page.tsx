@@ -4,6 +4,7 @@ import { useContext, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Box, Heading, FormControl, FormLabel, Input, Button, VStack, Text, useToast, Select } from '@chakra-ui/react';
 import { AppContext } from '../store/ContextProvider';
+import { USER_API, apiFetch } from '@/lib/api';
 
 export default function SignUp() {
   const [name, setName] = useState('');
@@ -16,7 +17,7 @@ export default function SignUp() {
 
   const { currentUser, setCurrentUser } = useContext(AppContext);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (password !== confirmPassword) {
@@ -24,27 +25,53 @@ export default function SignUp() {
       return;
     }
 
-    // Get existing users or create empty array
-    const users = JSON.parse(localStorage.getItem('vv_users') || '[]');
-
-    // Check if email already exists
-    if (users.find((u: any) => u.email === email)) {
-      toast({ title: 'Email already registered', status: 'error' });
+    if (!name || !email || !password) {
+      toast({ title: 'Please fill in all fields', status: 'error' });
       return;
     }
 
-    // Add new user
-    users.push({ name, email, password, id: crypto.randomUUID(), role,  
-      dateJoined: new Date().toISOString(), documentName: '', documentUrl: '', 
-    });
-    localStorage.setItem('vv_users', JSON.stringify(users));
+    try {
+      const response = await fetch('http://localhost:3002/api/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fullName: name,
+          email,
+          password,
+          type: role,
+        }),
+      });
 
-    // Auto-login after signup
-    // localStorage.setItem('vv_currentUser', JSON.stringify({ name, email }));
+      if (!response.ok) {
+        const error = await response.json();
+        toast({ 
+          title: 'Sign up failed', 
+          description: error.message || 'An error occurred', 
+          status: 'error' 
+        });
+        return;
+      }
 
-    // toast({ title: 'Account created successfully!', status: 'success' });
-    // setCurrentUser({ name, email });
-    router.push('/signin'); // redirect to home
+      const newUser = await response.json();
+      toast({ 
+        title: 'Account created successfully!', 
+        status: 'success' 
+      });
+
+      const { password: _, ...userWithoutPassword } = newUser;
+      setCurrentUser(userWithoutPassword);
+
+      router.push('/signin');
+    } catch (error) {
+      console.error('Signup error:', error);
+      toast({ 
+        title: 'Network error', 
+        description: 'Could not connect to server. Make sure the backend is running on port 3002.', 
+        status: 'error' 
+      });
+    }
   };
 
   return (

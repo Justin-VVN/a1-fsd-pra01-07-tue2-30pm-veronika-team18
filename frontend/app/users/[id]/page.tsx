@@ -1,13 +1,12 @@
 'use client';
 
 import { AppContext } from '@/app/store/ContextProvider';
-import { use, useId } from 'react';
+import { use } from 'react';
+import { USER_API, apiFetch } from '@/lib/api';
 
 import {
   FormControl,
   FormLabel,
-  FormErrorMessage,
-  FormHelperText,
   Input,
   Button,
   useToast,
@@ -23,43 +22,35 @@ export default function UserPage({
   const toast = useToast();
   const { currentUser, setCurrentUser } = use(AppContext);
 
-  const onSave = (evt) => {
+  const onSave = async (evt) => {
     evt.preventDefault();
 
     const updatedUserFormData = Object.fromEntries(
       new FormData(evt.currentTarget).entries(),
     );
 
-    const lsUsers = localStorage.getItem('vv_users') || '[]';
     try {
-      const users = JSON.parse(lsUsers);
-
-      const userIndex = users.findIndex((usr) => usr.id === currentUser.id);
-      // if (!foundUser) throw new Error('User error');
-
-      // update the info for the current user inside the users list
-      const updatedUser = { ...users[userIndex], ...updatedUserFormData };
-      users[userIndex] = updatedUser;
-
-      // if (duplicatedUser) throw new Error('Duplicated user');
-
-      // users.push(newUser);
-      localStorage.setItem('vv_users', JSON.stringify(users));
+      const updatedUser = await apiFetch<any>(`${USER_API}/users/${currentUser.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(updatedUserFormData),
+      });
 
       const { password, ...curUsr } = updatedUser;
       setCurrentUser(curUsr);
-      localStorage.setItem('vv_currentUser', JSON.stringify(curUsr));
 
       toast({
-        title: 'Updated info succesfully',
-        // description: "We've created your account for you.",
+        title: 'Updated info successfully',
         status: 'success',
         duration: 2000,
         isClosable: true,
       });
-
     } catch (e) {
-      console.error(e);
+      console.error('Failed to update user:', e);
+      toast({
+        title: 'Failed to update',
+        description: 'Could not save user information',
+        status: 'error',
+      });
     }
   };
 

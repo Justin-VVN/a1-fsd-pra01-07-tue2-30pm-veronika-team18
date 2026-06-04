@@ -7,58 +7,100 @@ import './home.css';
 import { useEffect, useRef, useState } from 'react';
 import { Button, FormControl, Input } from '@chakra-ui/react';
 
+type Venue = {
+  id: number;
+  name: string;
+  location: string;
+  capacity: number;
+  price: number;
+  imgSrc: string;
+  ownerId: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export default function HomePage() {
   const [venues, setVenues] = useState([]);
   const [allVenues, setAllVenues] = useState([]);
-
-  useEffect(() => {
-    const localStorageVenues = localStorage.getItem('vv_venues') || '[]';
-
-    if (localStorageVenues) {
-      setVenues(JSON.parse(localStorageVenues));
-      setAllVenues(JSON.parse(localStorageVenues));
-    } else {
-      console.log('null');
-    }
-  }, []);
-
-  const searchQueryRef = useRef(null);
-
-  const onVenueSearch = (evt: React.SubmitEvent<HTMLFormElement>) => {
-    evt.preventDefault();
-
-    if (searchQueryRef.current) {
-      const searchQuery = searchQueryRef.current.value;
-
-      if (!searchQuery) {
-        alert('You need to enter something to search');
-        return;
-      }
-
-      const lsVenues = localStorage.getItem('vv_venues') || '[]';
+const [loading, setLoading] = useState(true);
+const [error, setError] = useState<string | null>(null);
+  // Fetch venues from backend API
+ useEffect(() => {
+    const fetchVenues = async () => {
       try {
-        const allVenues = JSON.parse(lsVenues);
-        let filteredVenues = allVenues.filter(
-          (dbVenue) =>
-            dbVenue.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            dbVenue.location?.toLowerCase().includes(searchQuery.toLowerCase()),
-        );
+        setLoading(true);
+        setError(null);
 
-        console.log('filteredVenues', filteredVenues);
+        const res = await fetch('http://localhost:3001/api/venues', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        });
 
-        if (capacityRef.current && capacityRef.current.value) {
-          filteredVenues = filteredVenues.filter(venue => venue.capacity >= Number(capacityRef.current.value))
+        if (!res.ok) {
+          throw new Error(`Server responded with ${res.status}`);
         }
 
-        setVenues(filteredVenues);
-      } catch { }
+        const data: Venue[] = await res.json();
+        setVenues(data);
+        setAllVenues(data);
+      } catch (err: any) {
+        console.error('Failed to fetch venues:', err);
+        setError('Backend not reachable. Please try again later.');
+        setVenues([]);
+        setAllVenues([]);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-      // reset search query after done
-      searchQueryRef.current.value = '';
+    fetchVenues();
+  }, []);
+
+  const searchQueryRef = useRef<HTMLInputElement>(null);
+  const capacityRef = useRef<HTMLInputElement>(null);
+
+  const onVenueSearch = (evt: React.FormEvent<HTMLFormElement>) => {
+    evt.preventDefault();
+
+    const searchQuery = searchQueryRef.current?.value.trim() || '';
+    const minCapacity = capacityRef.current?.value ? Number(capacityRef.current.value) : 0;
+
+    if (!searchQuery && minCapacity === 0) {
+      setVenues(allVenues);
+      return;
     }
+
+    let filteredVenues = [...allVenues];
+
+    // Filter by search query (name or location)
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      filteredVenues = filteredVenues.filter((venue) =>
+        venue.name?.toLowerCase().includes(q) ||
+        venue.location?.toLowerCase().includes(q)
+      );
+    }
+
+    // Filter by minimum capacity
+    if (minCapacity > 0) {
+      filteredVenues = filteredVenues.filter((venue) => venue.capacity >= minCapacity);
+    }
+
+    setVenues(filteredVenues);
+
+    // Clear search input
+    if (searchQueryRef.current) searchQueryRef.current.value = '';
   };
 
-  const capacityRef = useRef(null);
+  const clearSearch = () => {
+    setVenues(allVenues);
+    if (searchQueryRef.current) searchQueryRef.current.value = '';
+    if (capacityRef.current) capacityRef.current.value = '';
+  };
+
+  if (loading) {
+    return <div className="text-center py-20 text-xl">Loading venues...</div>;
+  }
 
   return (
     <div>
