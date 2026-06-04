@@ -31,7 +31,7 @@ export default function SignUp() {
     }
 
     try {
-      const response = await fetch('http://localhost:3002/api/users', {
+      const response = await fetch('http://localhost:3001/api/users', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -68,7 +68,7 @@ export default function SignUp() {
       console.error('Signup error:', error);
       toast({ 
         title: 'Network error', 
-        description: 'Could not connect to server. Make sure the backend is running on port 3002.', 
+        description: 'Could not connect to server. Make sure the backend is running on port 3001.', 
         status: 'error' 
       });
     }

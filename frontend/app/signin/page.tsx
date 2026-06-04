@@ -49,7 +49,7 @@ export default function SignIn() {
       console.error('Sign in error:', error);
       toast({ 
         title: 'Network error', 
-        description: 'Could not connect to server. Make sure the backend is running on port 3002.', 
+        description: 'Could not connect to server. Make sure the backend is running on port 3001.', 
         status: 'error' 
       });
     }
