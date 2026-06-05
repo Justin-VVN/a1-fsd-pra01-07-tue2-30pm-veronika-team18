@@ -31,7 +31,7 @@ export default function SignIn() {
       setCurrentUser(currUser);
       
       toast({ 
-        title: `Welcome back, ${currUser.fullName || currUser.email}!`, 
+        title: `Welcome ${currUser.fullName || currUser.email}`, 
         status: 'success' 
       });
 

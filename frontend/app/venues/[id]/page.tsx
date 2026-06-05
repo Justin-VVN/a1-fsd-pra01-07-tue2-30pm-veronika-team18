@@ -30,10 +30,11 @@ import {
 import { AddIcon, MinusIcon } from '@chakra-ui/icons';
 import { AppContext } from '@/app/store/ContextProvider';
 import { VENUE_API, BOOKING_API, apiFetch } from '@/lib/api';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 
 import VenueReviews from '@/app/venueReviews'; //importing the venueReviews component for display
 import WriteReview from '@/app/writeVenueReview';
-import { log } from 'console';
 
 export default function VenueDetailPage({
   params,
@@ -43,8 +44,9 @@ export default function VenueDetailPage({
   const { id } = use(params);
   const { currentUser } = use(AppContext);
   const [venue, setVenue] = useState<Venue | null>(null);
-  const [checkIn, setCheckIn] = useState('');
-  const [checkOut, setCheckOut] = useState('');
+  const [blockedDates, setBlockedDates] = useState<{ startDate: string; endDate: string }[]>([]);
+  const [checkIn, setCheckIn] = useState<Date | null>(null);
+  const [checkOut, setCheckOut] = useState<Date | null>(null);
   const [guests, setGuests] = useState(1);
   const [discountCode, setDiscountCode] = useState('');
   const [discount, setDiscount] = useState({
@@ -84,12 +86,41 @@ export default function VenueDetailPage({
     fetchVenue();
   }, [id]);
 
+  useEffect(() => {
+    if (!id) return;
+    apiFetch<any[]>(`${VENUE_API}/blocked-dates`)
+      .then((all) => setBlockedDates((all || []).filter((d) => String(d.venueId ?? d.venue?.id) === String(id))))
+      .catch(() => setBlockedDates([]));
+  }, [id]);
+
+  // Build a flat array of every blocked Date for react-datepicker excludeDates
+  const excludedDates: Date[] = blockedDates.flatMap((b) => {
+    const dates: Date[] = [];
+    const cur = new Date(b.startDate);
+    const end = new Date(b.endDate);
+    while (cur <= end) {
+      dates.push(new Date(cur));
+      cur.setDate(cur.getDate() + 1);
+    }
+    return dates;
+  });
+
+  const isRangeBlocked = (start: Date, end: Date) => {
+    const s = start.getTime();
+    const e = end.getTime();
+    return blockedDates.some((d) => {
+      const bs = new Date(d.startDate).getTime();
+      const be = new Date(d.endDate).getTime();
+      return s <= be && e >= bs;
+    });
+  };
+
   const nights =
     checkIn && checkOut
       ? Math.max(
         0,
         Math.ceil(
-          (new Date(checkOut).getTime() - new Date(checkIn).getTime()) /
+          (checkOut.getTime() - checkIn.getTime()) /
           (1000 * 60 * 60 * 24),
         ),
       )
@@ -139,6 +170,10 @@ export default function VenueDetailPage({
       toast({ title: 'Check-out must be after check-in', status: 'error' });
       return;
     }
+    if (isRangeBlocked(checkIn!, checkOut!)) {
+      toast({ title: 'Selected dates are unavailable', description: 'The venue is blocked during part or all of your selected dates.', status: 'error' });
+      return;
+    }
 
     if (!preferenceRank) {
     toast({ title: 'Please select a venue preference rank', status: 'error' });
@@ -166,8 +201,8 @@ export default function VenueDetailPage({
     const newBooking = {
       hirerId: currentUser.id,
       venueId: venue?.id,
-      checkIn,
-      checkOut,
+      checkIn: checkIn!.toISOString().split('T')[0],
+      checkOut: checkOut!.toISOString().split('T')[0],
       nights,
       guests,
       eventName,
@@ -251,8 +286,8 @@ export default function VenueDetailPage({
     });
 
     // Reset form
-    setCheckIn('');
-    setCheckOut('');
+    setCheckIn(null);
+    setCheckOut(null);
     setGuests(1);
     setDiscount({ valid: false, percentage: 0, amount: 0 });
     setCreditStar(finalCreditStar);
@@ -313,7 +348,7 @@ export default function VenueDetailPage({
             <Text fontSize='lg'>Capacity: {venue.capacity} guests</Text>
           </HStack>
           <Text fontSize='lg' color='gray.700'>
-            Owner: {venue.ownerId}  
+            Owner: {venue.ownerFullname}  
           </Text>
           <Text fontSize='lg' color='gray.700'>
             Perfect for your next event in Melbourne.
@@ -391,20 +426,26 @@ export default function VenueDetailPage({
             <Flex gap={4}>
               <FormControl>
                 <FormLabel>Check-in</FormLabel>
-                <Input
-                  type='date'
-                  min={minStartDate}
-                  value={checkIn}
-                  onChange={(e) => setCheckIn(e.target.value)}
+                <DatePicker
+                  selected={checkIn}
+                  onChange={(date: Date | null) => setCheckIn(date)}
+                  excludeDates={excludedDates}
+                  minDate={new Date()}
+                  placeholderText='Select check-in'
+                  dateFormat='yyyy-MM-dd'
+                  customInput={<Input />}
                 />
               </FormControl>
               <FormControl>
                 <FormLabel>Checkout</FormLabel>
-                <Input
-                  type='date'
-                  min={checkIn || minStartDate}
-                  value={checkOut}
-                  onChange={(e) => setCheckOut(e.target.value)}
+                <DatePicker
+                  selected={checkOut}
+                  onChange={(date: Date | null) => setCheckOut(date)}
+                  excludeDates={excludedDates}
+                  minDate={checkIn ?? new Date()}
+                  placeholderText='Select checkout'
+                  dateFormat='yyyy-MM-dd'
+                  customInput={<Input />}
                 />
               </FormControl>
             </Flex>

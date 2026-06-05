@@ -24,6 +24,13 @@ import {
   Divider,
   Select,
   Progress,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  ModalCloseButton,
 } from '@chakra-ui/react';
 import { AppContext } from '../store/ContextProvider';
 import { VENUE_API, BOOKING_API, USER_API, apiFetch } from '@/lib/api';
@@ -35,6 +42,8 @@ export default function VenuesPage() {
 
   const [myVenues, setMyVenues] = useState<any[]>([]);
   const [bookingRequests, setBookingRequests] = useState<any[]>([]);
+  const [editingVenue, setEditingVenue] = useState<any | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', imgSrc: '', location: '', capacity: '', price: '' });
   const [form, setForm] = useState({
     name: '',
     imgSrc: '',
@@ -200,54 +209,42 @@ const getHirerAverageRating = (hirerId: string) => {
 };
 
   {/*handling blocked dates for venues*/ }
-  const handleBlockVenue = () => {
-    if (
-      !blockForm.venueId ||
-      !blockForm.startDate ||
-      !blockForm.endDate
-    ) {
-
-      toast({
-        title: 'Fill in all block dates here...',
-        status: 'warning',
-      });
+  const handleBlockVenue = async () => {
+    if (!editingVenue || !blockForm.startDate || !blockForm.endDate) {
+      toast({ title: 'Fill in start and end date', status: 'warning' });
       return;
     }
 
     const newBlockedPeriod = {
-      id: Date.now(),
-      venueId: Number(blockForm.venueId),
+      venueId: Number(editingVenue.id),
       startDate: blockForm.startDate,
       endDate: blockForm.endDate,
       reason: blockForm.reason,
     };
 
-    const saveBlockedDates = async () => {
-      try {
-        const updated = await apiFetch<any>(`${VENUE_API}/blocked-dates`, {
-          method: 'POST',
-          body: JSON.stringify(newBlockedPeriod),
-        });
-        setBlockedDates((prev) => [...prev, updated]);
-      } catch (err) {
-        console.error('Failed to save blocked date:', err);
-        toast({ title: 'Failed to block venue', status: 'error' });
-      }
-    };
+    try {
+      const saved = await apiFetch<any>(`${VENUE_API}/blocked-dates`, {
+        method: 'POST',
+        body: JSON.stringify(newBlockedPeriod),
+      });
+      setBlockedDates((prev) => [...prev, saved]);
+      setBlockForm({ venueId: '', startDate: '', endDate: '', reason: '' });
+      toast({ title: 'Timeslot blocked', status: 'success' });
+    } catch (err) {
+      console.error('Failed to save blocked date:', err);
+      toast({ title: 'Failed to block timeslot', status: 'error' });
+    }
+  };
 
-    saveBlockedDates();
-
-    setBlockForm({
-      venueId: '',
-      startDate: '',
-      endDate: '',
-      reason: '',
-    });
-
-    toast({
-      title: 'Venue blocked',
-      status: 'success',
-    });
+  const handleUnblockDate = async (blockedDateId: number) => {
+    try {
+      await apiFetch(`${VENUE_API}/blocked-dates/${blockedDateId}`, { method: 'DELETE' });
+      setBlockedDates((prev) => prev.filter((d) => d.id !== blockedDateId));
+      toast({ title: 'Timeslot unblocked', status: 'info', duration: 2000 });
+    } catch (err) {
+      console.error('Failed to unblock date:', err);
+      toast({ title: 'Could not unblock timeslot', status: 'error' });
+    }
   };
 
   const getHirerInsights = () => {
@@ -283,6 +280,54 @@ const getHirerAverageRating = (hirerId: string) => {
   };
   const { mostChosen, leastChosen, neverSelected } = getHirerInsights();
   
+  const handleEditClick = (venue: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingVenue(venue);
+    setEditForm({
+      name: venue.name,
+      imgSrc: venue.imgSrc,
+      location: venue.location,
+      capacity: String(venue.capacity),
+      price: String(venue.price),
+    });
+  };
+
+  const handleUpdateVenue = async () => {
+    if (!editingVenue) return;
+    try {
+      const updated = await apiFetch<any>(`${VENUE_API}/venues/${editingVenue.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          name: editForm.name,
+          imgSrc: editForm.imgSrc,
+          location: editForm.location,
+          capacity: Number(editForm.capacity),
+          price: Number(editForm.price),
+          ownerId: currentUser.id,
+        }),
+      });
+      setMyVenues((prev) => prev.map((v) => (v.id === editingVenue.id ? { ...v, ...updated } : v)));
+      setEditingVenue(null);
+      toast({ title: 'Venue updated', status: 'success', duration: 2000 });
+    } catch (err) {
+      console.error('Failed to update venue:', err);
+      toast({ title: 'Could not update venue', status: 'error' });
+    }
+  };
+
+  const handleDeleteVenue = async (venueId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm('Are you sure you want to delete this venue?')) return;
+    try {
+      await apiFetch(`${VENUE_API}/venues/${venueId}`, { method: 'DELETE' });
+      setMyVenues((prev) => prev.filter((v) => v.id !== venueId));
+      toast({ title: 'Venue deleted', status: 'info', duration: 2000 });
+    } catch (err) {
+      console.error('Failed to delete venue:', err);
+      toast({ title: 'Could not delete venue', status: 'error' });
+    }
+  };
+
   const handlePostVenue = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser) return;
@@ -517,47 +562,6 @@ const getHirerAverageRating = (hirerId: string) => {
               </form>
             </Box>
 
-            {/*Blocked dates form*/}
-            <Box mt={9}>
-              <Heading size="md" mb={4}>Block Venue</Heading>
-
-              <Select placeholder="Select venue"
-                value={blockForm.venueId}
-                onChange={(e) =>
-                  setBlockForm({ ...blockForm, venueId: e.target.value })
-                }
-              >
-
-                {myVenues.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.name}
-                  </option>
-                ))}
-              </Select>
-
-              <Input
-                mt={4}
-                type="date"
-                value={blockForm.startDate}
-                onChange={(e) =>
-                  setBlockForm({ ...blockForm, startDate: e.target.value })
-                }
-              />
-
-              <Input
-                mt={4}
-                type="date"
-                value={blockForm.endDate}
-                onChange={(e) =>
-                  setBlockForm({ ...blockForm, endDate: e.target.value })
-                }
-              />
-
-              <Button mt={5} colorScheme="red" onClick={handleBlockVenue}>
-                Block
-              </Button>
-            </Box>
-
             <Heading size='md' mb={6}>
               My Venues ({myVenues.length})
             </Heading>
@@ -573,6 +577,9 @@ const getHirerAverageRating = (hirerId: string) => {
                     borderRadius='xl'
                     boxShadow='md'
                     overflow='hidden'
+                    cursor='pointer'
+                    onClick={() => router.push(`/venues/${venue.id}`)}
+                    _hover={{ boxShadow: 'xl', transform: 'translateY(-2px)', transition: 'all 0.2s' }}
                   >
                     <Image
                       src={venue.imgSrc}
@@ -589,6 +596,14 @@ const getHirerAverageRating = (hirerId: string) => {
                           Capacity: {venue.capacity}
                         </Badge>
                         <Text fontWeight='bold'>${venue.price}/night</Text>
+                      </HStack>
+                      <HStack mt={4} spacing={2}>
+                        <Button size='sm' colorScheme='blue' onClick={(e) => handleEditClick(venue, e)}>
+                          Edit
+                        </Button>
+                        <Button size='sm' colorScheme='red' variant='outline' onClick={(e) => handleDeleteVenue(venue.id, e)}>
+                          Delete
+                        </Button>
                       </HStack>
                     </Box>
                   </Box>
@@ -615,43 +630,94 @@ const getHirerAverageRating = (hirerId: string) => {
                       borderRadius='2xl'
                       boxShadow='md'
                     >
-                      <HStack>
+                      {/* Header row: venue image + summary */}
+                      <HStack align='start' mb={4}>
                         <Image
                           src={req.venue.imgSrc}
                           alt=''
-                          boxSize='80px'
+                          boxSize='90px'
                           borderRadius='lg'
                           objectFit='cover'
+                          flexShrink={0}
                         />
                         <Box flex={1}>
-                          <Heading size='md'>{req.venue.name}</Heading>
-                          <Text color='gray.500'>
-                            Requested by: {req.hirer.name}
+                          <HStack justify='space-between' align='start'>
+                            <Heading size='md'>{req.venue.name}</Heading>
+                            <Badge
+                              colorScheme={req.status === 'confirmed' ? 'green' : req.status === 'rejected' ? 'red' : 'yellow'}
+                              fontSize='sm' px={3} py={1} borderRadius='full' textTransform='capitalize'
+                            >
+                              {req.status}
+                            </Badge>
+                          </HStack>
+                          <Text color='gray.500' fontSize='sm'>
+                            Booking #{req.id} · Submitted {req.createdAt ? new Date(req.createdAt).toLocaleDateString() : '—'}
                           </Text>
-                          <Text>
-                            {req.checkIn} → {req.checkOut} ({req.nights} nights)
+                          <Text mt={1} fontWeight='semibold'>
+                            Hirer: {req.hirer?.fullName ?? req.hirer?.name ?? 'Unknown'}
                           </Text>
-                          <Text>
-                            Guests: {req.guests} | Total: ${req.total}
-                          </Text>
+                          <Text fontSize='sm' color='gray.600'>{req.hirer?.email ?? ''}</Text>
                         </Box>
                       </HStack>
-                      {/* <div>
-                      <h1>Addtional documents</h1>
-                      <h2>Driver's License</h2>
-                      <img
-                        src={`data:image/jpeg;base64,${req.additionalDocuments?.driverLicense}`}
-                        alt='Driver Licence'
-                      />
-                    </div> */}
 
-                      <HStack mt={3}>
+                      <Divider mb={3} />
+
+                      {/* Booking details grid */}
+                      <SimpleGrid columns={2} spacing={2} mb={3}>
+                        <Box>
+                          <Text fontSize='xs' color='gray.500' fontWeight='semibold' textTransform='uppercase'>Check-in</Text>
+                          <Text fontWeight='medium'>{req.checkIn}</Text>
+                        </Box>
+                        <Box>
+                          <Text fontSize='xs' color='gray.500' fontWeight='semibold' textTransform='uppercase'>Check-out</Text>
+                          <Text fontWeight='medium'>{req.checkOut}</Text>
+                        </Box>
+                        <Box>
+                          <Text fontSize='xs' color='gray.500' fontWeight='semibold' textTransform='uppercase'>Nights</Text>
+                          <Text fontWeight='medium'>{req.nights}</Text>
+                        </Box>
+                        <Box>
+                          <Text fontSize='xs' color='gray.500' fontWeight='semibold' textTransform='uppercase'>Guests</Text>
+                          <Text fontWeight='medium'>{req.guests}</Text>
+                        </Box>
+                        {req.eventName && (
+                          <Box>
+                            <Text fontSize='xs' color='gray.500' fontWeight='semibold' textTransform='uppercase'>Event</Text>
+                            <Text fontWeight='medium'>{req.eventName}</Text>
+                          </Box>
+                        )}
+                        {req.eventTime && (
+                          <Box>
+                            <Text fontSize='xs' color='gray.500' fontWeight='semibold' textTransform='uppercase'>Event Time</Text>
+                            <Text fontWeight='medium'>{req.eventTime}</Text>
+                          </Box>
+                        )}
+                        {req.eventDuration && (
+                          <Box>
+                            <Text fontSize='xs' color='gray.500' fontWeight='semibold' textTransform='uppercase'>Duration</Text>
+                            <Text fontWeight='medium'>{req.eventDuration} hrs</Text>
+                          </Box>
+                        )}
+                        {req.preferenceRank && (
+                          <Box>
+                            <Text fontSize='xs' color='gray.500' fontWeight='semibold' textTransform='uppercase'>Preference Rank</Text>
+                            <Text fontWeight='medium'>#{req.preferenceRank}</Text>
+                          </Box>
+                        )}
+                        <Box>
+                          <Text fontSize='xs' color='gray.500' fontWeight='semibold' textTransform='uppercase'>Total</Text>
+                          <Text fontWeight='bold' color='green.600'>${req.total}</Text>
+                        </Box>
+                      </SimpleGrid>
+
+                      <Divider mb={3} />
+                      <HStack mb={2}>
                         <Text fontWeight="semibold">Hirer Credibility:</Text>
                         <StarRating score={score} />
                         <Text fontSize="sm" color="gray.500">({score}/5)</Text>
                       </HStack>
 
-                      <HStack mt={3}>
+                      <HStack mb={3}>
                        <Text fontWeight="semibold">Hirer Reputation:</Text>
                        <StarRating score={reputationScore} />
                        <Text fontSize="sm" color="gray.500">
@@ -791,6 +857,81 @@ const getHirerAverageRating = (hirerId: string) => {
           </TabPanel>
         </TabPanels>
       </Tabs>
+
+      {/* Edit Venue Modal */}
+      <Modal isOpen={!!editingVenue} onClose={() => setEditingVenue(null)} size='xl'>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Edit Venue — {editingVenue?.name}</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <VStack spacing={4} align='stretch'>
+              <FormControl>
+                <FormLabel>Venue Name</FormLabel>
+                <Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+              </FormControl>
+              <FormControl>
+                <FormLabel>Image URL</FormLabel>
+                <Input value={editForm.imgSrc} onChange={(e) => setEditForm({ ...editForm, imgSrc: e.target.value })} />
+              </FormControl>
+              <FormControl>
+                <FormLabel>Location</FormLabel>
+                <Input value={editForm.location} onChange={(e) => setEditForm({ ...editForm, location: e.target.value })} />
+              </FormControl>
+              <HStack>
+                <FormControl>
+                  <FormLabel>Capacity</FormLabel>
+                  <Input type='number' value={editForm.capacity} onChange={(e) => setEditForm({ ...editForm, capacity: e.target.value })} />
+                </FormControl>
+                <FormControl>
+                  <FormLabel>Price / night</FormLabel>
+                  <Input type='number' value={editForm.price} onChange={(e) => setEditForm({ ...editForm, price: e.target.value })} />
+                </FormControl>
+              </HStack>
+
+              <Divider mt={2} />
+
+              <Heading size='sm'>Block Timeslot</Heading>
+              <HStack>
+                <FormControl>
+                  <FormLabel>Start Date</FormLabel>
+                  <Input type='date' value={blockForm.startDate} onChange={(e) => setBlockForm({ ...blockForm, startDate: e.target.value })} />
+                </FormControl>
+                <FormControl>
+                  <FormLabel>End Date</FormLabel>
+                  <Input type='date' value={blockForm.endDate} onChange={(e) => setBlockForm({ ...blockForm, endDate: e.target.value })} />
+                </FormControl>
+              </HStack>
+              <FormControl>
+                <FormLabel>Reason (optional)</FormLabel>
+                <Input value={blockForm.reason} onChange={(e) => setBlockForm({ ...blockForm, reason: e.target.value })} placeholder='e.g. maintenance' />
+              </FormControl>
+              <Button colorScheme='orange' onClick={handleBlockVenue}>Block Timeslot</Button>
+
+              {blockedDates.filter((d) => String(d.venueId ?? d.venue?.id) === String(editingVenue?.id)).length > 0 && (
+                <>
+                  <Divider />
+                  <Heading size='sm'>Blocked Timeslots</Heading>
+                  <VStack align='stretch' spacing={2}>
+                    {blockedDates
+                      .filter((d) => String(d.venueId ?? d.venue?.id) === String(editingVenue?.id))
+                      .map((d) => (
+                        <HStack key={d.id} justify='space-between' bg='orange.50' p={2} borderRadius='md'>
+                          <Text fontSize='sm'>{new Date(d.startDate).toLocaleDateString()} → {new Date(d.endDate).toLocaleDateString()}{d.reason ? ` (${d.reason})` : ''}</Text>
+                          <Button size='xs' colorScheme='red' variant='outline' onClick={() => handleUnblockDate(d.id)}>Unblock</Button>
+                        </HStack>
+                      ))}
+                  </VStack>
+                </>
+              )}
+            </VStack>
+          </ModalBody>
+          <ModalFooter>
+            <Button colorScheme='blue' mr={3} onClick={handleUpdateVenue}>Save Changes</Button>
+            <Button variant='ghost' onClick={() => setEditingVenue(null)}>Cancel</Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </Box>
   );
 }

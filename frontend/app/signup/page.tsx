@@ -26,6 +26,9 @@ export default function SignUp() {
     }
 
   const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{6,}$/;
+    // validatePassword(password) {
+
+    // }
 
      if (!passwordRegex.test(password)) {
        toast({
@@ -69,12 +72,12 @@ export default function SignUp() {
 
       const newUser = await response.json();
       toast({ 
-        title: 'Account created successfully!', 
+        title: `Welcome ${newUser.fullName || newUser.email}!`, 
         status: 'success' 
       });
 
-      const { password: _, ...userWithoutPassword } = newUser;
-      setCurrentUser(userWithoutPassword);
+      // const { password: _, ...userWithoutPassword } = newUser;
+      // setCurrentUser(userWithoutPassword);
 
       router.push('/signin');
     } catch (error) {

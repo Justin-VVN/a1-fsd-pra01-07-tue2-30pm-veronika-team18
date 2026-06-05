@@ -51,12 +51,16 @@ export default function Header() {
           {currentUser ? (
             <>
               <Text fontWeight="medium" fontSize="lg">
-                Welcome, <Link href={`/users/${currentUser.id}`}>{currentUser.fullName}</Link >
+                Welcome{' '}
+                <Link href={`/users/${currentUser.id}`} style={{ textDecoration: 'none' }}
+                  onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
+                  onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}
+                >
+                  {currentUser.fullName}
+                </Link>
               </Text>
-              <Button colorScheme="red" variant="solid"
-              onClick={handleSignOut}
-              >
-                Log Out
+              <Button variant="link" colorScheme="red" onClick={handleSignOut}>
+                Logout
               </Button>
             </>
           ) : (

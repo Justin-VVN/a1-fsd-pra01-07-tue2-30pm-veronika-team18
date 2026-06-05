@@ -174,7 +174,7 @@ const [error, setError] = useState<string | null>(null);
 
       <div id='venues-container' className='py-8'>
         {venues.map((venue) => (
-          <VenueCard key={venue.name} venue={venue} />
+          <VenueCard key={venue.id} venue={venue} />
         ))}
       </div>
     </div>

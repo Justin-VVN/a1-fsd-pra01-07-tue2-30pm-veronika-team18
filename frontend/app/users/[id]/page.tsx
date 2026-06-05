@@ -10,6 +10,7 @@ import {
   FormLabel,
   Input,
   Button,
+  Heading,
   useToast,
 } from '@chakra-ui/react';
 
@@ -32,7 +33,7 @@ const onSave = async (evt: FormEvent<HTMLFormElement>) => {
 
     try {
       const updatedUser = await apiFetch<any>(`${USER_API}/users/${currentUser.id}`, {
-        method: 'PATCH',
+        method: 'PUT',
         body: JSON.stringify(updatedUserFormData),
       });
 
@@ -61,14 +62,15 @@ const onSave = async (evt: FormEvent<HTMLFormElement>) => {
 
   return (
     <div className='px-32'>
+      <Heading fontWeight="bold" my={8}>{currentUser.fullName}'s Profile</Heading>
       <form onSubmit={onSave}>
         <FormControl>
          <FormLabel>Date Account Was Created</FormLabel>
          <Input
           isReadOnly
            value={
-           currentUser.dateJoined
-            ? new Date(currentUser.dateJoined).toLocaleDateString()
+           currentUser.createdAt
+            ? new Date(currentUser.createdAt).toLocaleDateString()
             : ''
            }
           />
@@ -79,20 +81,13 @@ const onSave = async (evt: FormEvent<HTMLFormElement>) => {
         </FormControl>
         <FormControl>
           <FormLabel>Name</FormLabel>
-          <Input type='text' name='name' defaultValue={currentUser.name} />
+          <Input type='text' name='fullName' defaultValue={currentUser.fullName} />
         </FormControl>
         <FormControl>
           <FormLabel>Email</FormLabel>
           <Input type='email' name='email' defaultValue={currentUser.email} />
         </FormControl>
-        <FormControl>
-          <FormLabel>Phone Number</FormLabel>
-          <Input
-            type='text'
-            name='phoneNumber'
-            defaultValue={currentUser.phoneNumber}
-          />
-        </FormControl>
+
         {/* <FormControl>
           <FormLabel>Password</FormLabel>
           <Input type='password' name='password' />
