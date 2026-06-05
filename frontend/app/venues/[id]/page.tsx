@@ -313,7 +313,7 @@ export default function VenueDetailPage({
             <Text fontSize='lg'>Capacity: {venue.capacity} guests</Text>
           </HStack>
           <Text fontSize='lg' color='gray.700'>
-            Owner: {venue.ownerFullname}  
+            Owner: {venue.ownerId}  
           </Text>
           <Text fontSize='lg' color='gray.700'>
             Perfect for your next event in Melbourne.
