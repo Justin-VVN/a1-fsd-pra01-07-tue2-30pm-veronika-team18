@@ -25,6 +25,19 @@ export default function SignUp() {
       return;
     }
 
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{6,}$/;
+
+     if (!passwordRegex.test(password)) {
+       toast({
+       title: 'Password is too weak',
+        description:
+      'Password must be at least 6 characters, have uppercase, lowercase, and a special character.',
+       status: 'error',
+       });
+     return;
+     }
+
+
     if (!name || !email || !password) {
       toast({ title: 'Please fill in all fields', status: 'error' });
       return;
