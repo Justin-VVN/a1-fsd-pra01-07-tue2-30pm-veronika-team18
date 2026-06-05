@@ -45,8 +45,36 @@ export class UserController {
   async save(request: Request, response: Response) {
     const { fullName, password, email, type } = request.body;
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+     //adding backend validation for user credentials
+    if (!fullName || !email || !password || !type) {
+    return response.status(400).json({
+      message: "Full name, email, password and account type are required",
+    });
+    }
+  
+  //backend validation for complex password authenticator
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{6,}$/;
 
+  if (!passwordRegex.test(password)) {
+    return response.status(400).json({
+      message:
+        "Password must be at least 6 characters and include uppercase, lowercase, and a special character",
+    });
+  }
+   
+  //backend validation for checking if user is already registered
+  const existingUser = await this.userRepository.findOne({
+    where: { email },
+  });
+
+  if (existingUser) {
+    return response.status(400).json({
+      message: "Email is already registered",
+    });
+  }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+     
     const user = Object.assign(new User(), {
       fullName,
       email,
@@ -105,7 +133,7 @@ export class UserController {
 
     const updates: Partial<User> = { fullName, email, type };
     if (password) {
-      updates.plaintextPassword = password;
+     // updates.plaintextPassword = password;
       updates.password = await bcrypt.hash(password, 10);
     }
 
