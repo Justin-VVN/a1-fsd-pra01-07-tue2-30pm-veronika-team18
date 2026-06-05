@@ -45,11 +45,11 @@ export class VenueController {
 
     const venue = Object.assign(new Venue(), {
       name,
-      ownerId,
       imgSrc,
       location,
       capacity,
       price,
+      owner: ownerId ? { id: Number(ownerId) } : undefined,
     });
 
     try {

@@ -137,6 +137,25 @@ export class BookingController {
   }
 }
 
+  async patch(request: Request, response: Response) {
+    const id = parseInt(request.params.id);
+
+    const bookingToUpdate = await this.bookingRepository.findOne({ where: { id } });
+
+    if (!bookingToUpdate) {
+      return response.status(404).json({ message: "Booking not found" });
+    }
+
+    Object.assign(bookingToUpdate, request.body);
+
+    try {
+      const updated = await this.bookingRepository.save(bookingToUpdate);
+      return response.json(updated);
+    } catch (error) {
+      return response.status(400).json({ message: "Error updating booking", error });
+    }
+  }
+
   async remove(request: Request, response: Response) {
     const id = parseInt(request.params.id);
 

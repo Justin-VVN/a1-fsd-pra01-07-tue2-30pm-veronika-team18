@@ -24,6 +24,10 @@ router.put("/bookings/:id", async (req, res) => {
   await bookingController.update(req, res);
 });
 
+router.patch("/bookings/:id", async (req, res) => {
+  await bookingController.patch(req, res);
+});
+
 router.delete("/bookings/:id", async (req, res) => {
   await bookingController.remove(req, res);
 });

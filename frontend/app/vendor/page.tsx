@@ -445,7 +445,7 @@ const getHirerAverageRating = (hirerId: string) => {
   return (
     <Box maxW='80vw' mx='auto' py={10}>
       <Heading mb={8} textAlign='center' color='blue.600'>
-        Vendor Dashboard – Welcome, {currentUser.name}!
+        Vendor Dashboard – Welcome, {currentUser.fullName}!
       </Heading>
 
       <Tabs colorScheme='blue' isFitted>

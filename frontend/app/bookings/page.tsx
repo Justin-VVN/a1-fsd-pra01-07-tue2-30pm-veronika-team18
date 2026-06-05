@@ -116,7 +116,7 @@ export default function MyBookingsPage() {
         method: 'PATCH',
         body: JSON.stringify({ status: 'cancelled' }),
       });
-      setMyBookings((prev) => prev.map((b) => (b.id === id ? updated : b)));
+      setMyBookings((prev) => prev.map((b) => (b.id === id ? { ...b, ...updated, venue: b.venue } : b)));
       toast({ title: 'Booking cancelled', status: 'info' });
     } catch (err) {
       console.error('Failed to cancel booking:', err);
