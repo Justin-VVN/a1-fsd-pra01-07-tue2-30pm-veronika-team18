@@ -27,7 +27,7 @@ export default function Header() {
   
   
   return (
-    <Box as="header" bg="#E6787F;" color="white" py={4} px={8} boxShadow="md">
+    <Box as="header" bg="#4b96dc;" color="white" py={4} px={8} boxShadow="md">
       <Flex maxW="80vw" mx="auto" align="center">
         <Heading as="h1" size="lg" letterSpacing="tight">
           <Link href="/">Venue Vendors (VV)</Link>
