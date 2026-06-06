@@ -35,6 +35,22 @@ import {
 import { AppContext } from '../store/ContextProvider';
 import { VENUE_API, BOOKING_API, USER_API, apiFetch } from '@/lib/api';
 
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  CartesianGrid,
+  PieChart,
+  Pie,
+  Cell,
+  LineChart,
+  Line,
+  ResponsiveContainer,
+} from 'recharts';
+
 export default function VenuesPage() {
   const { currentUser } = useContext(AppContext);
   const router = useRouter();
@@ -279,6 +295,102 @@ const getHirerAverageRating = (hirerId: string) => {
     return { mostChosen, leastChosen, neverSelected };
   };
   const { mostChosen, leastChosen, neverSelected } = getHirerInsights();
+
+//data preparation for the DI Hirer graphs
+const colours = [
+  '#3182CE',
+  '#38A169',
+  '#DD6B20',
+  '#805AD5',
+  '#E53E3E',
+];
+
+//returning the hirer's name for displaying in charts
+const getHirerName = (booking: any) => {
+  if (booking.hirer?.fullName) return booking.hirer.fullName;
+  if (booking.hirer?.name) return booking.hirer.name;
+  return `Hirer ${booking.hirerId}`;
+};
+
+//getting the list of hirers who have made bookings
+const hirerNames = Array.from(
+  new Set(bookingRequests.map((booking) => getHirerName(booking)))
+);
+
+//counting how many times each hirer has applied for each venue
+const venueTallies = myVenues.map((venue) => {
+  const venueData: any = {
+    venue: venue.name,
+  };
+
+  bookingRequests
+    .filter(
+      (booking) =>
+        String(booking.venue?.id ?? booking.venueId) === String(venue.id)
+    )
+    .forEach((booking) => {
+      const hirerName = getHirerName(booking);
+
+      venueData[hirerName] = (venueData[hirerName] || 0) + 1;
+    });
+
+  return venueData;
+});
+
+//count bookings for each hirer
+const combinedTallies = hirerNames.map((hirerName) => {
+  const hirerBookings = bookingRequests.filter(
+    (booking) => getHirerName(booking) === hirerName
+  );
+
+  return {
+    hirer: hirerName,
+    accepted: hirerBookings.filter(
+      (booking) => booking.status === 'confirmed'
+    ).length,
+    rejected: hirerBookings.filter(
+      (booking) => booking.status === 'rejected'
+    ).length,
+    pending: hirerBookings.filter(
+      (booking) => booking.status === 'pending'
+    ).length,
+  };
+});
+
+//data for most & least active hirer pie chart
+const pieData = hirerNames.map((hirerName) => ({
+  name: hirerName,
+  value: bookingRequests.filter(
+    (booking) => getHirerName(booking) === hirerName
+  ).length,
+}));
+
+//venue utilisation by month
+const utilisationData = Object.values(
+  bookingRequests.reduce((acc: any, booking: any) => {
+    const bookingDate = booking.checkIn ?? booking.createdAt;
+
+    if (!bookingDate) return acc;
+
+    const date = new Date(bookingDate);
+
+    const month = date.toLocaleString('default', {
+      month: 'short',
+      year: '2-digit',
+    });
+
+    if (!acc[month]) {
+      acc[month] = {
+        month,
+        bookings: 0,
+      };
+    }
+
+    acc[month].bookings += 1;
+
+    return acc;
+  }, {})
+);
   
   const handleEditClick = (venue: any, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -857,6 +969,103 @@ const getHirerAverageRating = (hirerId: string) => {
           </TabPanel>
         </TabPanels>
       </Tabs>
+
+
+      <Divider my={10} />
+
+<Heading size="lg" mb={6}>
+  Visual Analytics
+</Heading>
+
+<SimpleGrid columns={[1, 1, 2]} spacing={8}>
+  <Box bg="white" p={6} borderRadius="xl" boxShadow="md">
+    <Heading size="md" mb={4}>
+      Hirer Tallies by Venue
+    </Heading>
+
+    <ResponsiveContainer width="100%" height={320}>
+      <BarChart data={venueTallies}>
+        <CartesianGrid strokeDasharray="3 3" />
+        <XAxis dataKey="venue" />
+        <YAxis allowDecimals={false} />
+        <Tooltip />
+        <Legend />
+        {hirerNames.map((hirer, index) => (
+          <Bar
+            key={hirer}
+            dataKey={hirer}
+            fill={colours[index % colours.length]}
+          />
+        ))}
+      </BarChart>
+    </ResponsiveContainer>
+  </Box>
+
+  <Box bg="white" p={6} borderRadius="xl" boxShadow="md">
+    <Heading size="md" mb={4}>
+      Combined Hirer Booking Status
+    </Heading>
+
+    <ResponsiveContainer width="100%" height={320}>
+      <BarChart data={combinedTallies}>
+        <CartesianGrid strokeDasharray="3 3" />
+        <XAxis dataKey="hirer" />
+        <YAxis allowDecimals={false} />
+        <Tooltip />
+        <Legend />
+        <Bar dataKey="accepted" stackId="a" fill="#38A169" />
+        <Bar dataKey="pending" stackId="a" fill="#DD6B20" />
+        <Bar dataKey="rejected" stackId="a" fill="#E53E3E" />
+      </BarChart>
+    </ResponsiveContainer>
+  </Box>
+
+  <Box bg="white" p={6} borderRadius="xl" boxShadow="md">
+    <Heading size="md" mb={4}>
+      Most and Least Active Hirers
+    </Heading>
+
+    <ResponsiveContainer width="100%" height={320}>
+      <PieChart>
+        <Pie
+          data={pieData}
+          dataKey="value"
+          nameKey="name"
+          outerRadius={100}
+          label
+        >
+          {pieData.map((entry, index) => (
+            <Cell key={entry.name} fill={colours[index % colours.length]} />
+          ))}
+        </Pie>
+        <Tooltip />
+        <Legend />
+      </PieChart>
+    </ResponsiveContainer>
+  </Box>
+
+  <Box bg="white" p={6} borderRadius="xl" boxShadow="md">
+    <Heading size="md" mb={4}>
+      Venue Utilisation Over Time
+    </Heading>
+
+    <ResponsiveContainer width="100%" height={320}>
+      <LineChart data={utilisationData as any[]}>
+        <CartesianGrid strokeDasharray="3 3" />
+        <XAxis dataKey="month" />
+        <YAxis allowDecimals={false} />
+        <Tooltip />
+        <Legend />
+        <Line
+          type="monotone"
+          dataKey="bookings"
+          stroke="#3182CE"
+          strokeWidth={3}
+        />
+      </LineChart>
+    </ResponsiveContainer>
+  </Box>
+</SimpleGrid>
 
       {/* Edit Venue Modal */}
       <Modal isOpen={!!editingVenue} onClose={() => setEditingVenue(null)} size='xl'>
