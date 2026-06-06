@@ -219,7 +219,7 @@ export default function MyBookingsPage() {
   return (
     <Box maxW='80vw' mx='auto' py={10}>
       <Heading mb={8} textAlign='center' color='blue.600'>
-        My Bookings – Welcome, {currentUser.name}!
+        My Bookings – Welcome, {currentUser.fullName}!
       </Heading>
 
       {/*  section for hirer to view their reputation score */}

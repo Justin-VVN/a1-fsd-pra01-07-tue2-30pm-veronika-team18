@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Flex, Box, Heading, Button, HStack, Spacer, Text } from '@chakra-ui/react';
 import { AppContext } from '@/app/store/ContextProvider';
 
+
 export default function Header() {
   // const [currentUser, setCurrentUser] = useState<{ name: string; email: string } | null>(null);
   const router = useRouter();
@@ -29,9 +30,21 @@ export default function Header() {
   return (
     <Box as="header" bg="#4b96dc;" color="white" py={4} px={8} boxShadow="md">
       <Flex maxW="80vw" mx="auto" align="center">
-        <Heading as="h1" size="lg" letterSpacing="tight">
-          <Link href="/">Venue Vendors (VV)</Link>
+        <Box>
+        <Heading as="h1" size="xl" fontWeight="black" letterSpacing="0.15em"
+          lineHeight="1" >
+          <Link href="/">VV</Link>
         </Heading>
+
+  <Text
+    fontSize="xs"
+    textTransform="uppercase"
+    letterSpacing="0.2em"
+    opacity={0.9}
+  >
+    Venue Vendors
+  </Text>
+</Box>
 
         <Spacer />
         <HStack spacing={6} fontWeight="medium">
