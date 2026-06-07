@@ -44,6 +44,14 @@ export class Venue {
   @Column({ type: 'simple-array', nullable: true })
   suitability: string[];
 
+  // Admin-controlled: whether this venue appears in the "Featured Venues" section
+  @Column({ default: false })
+  featured: boolean;
+
+  // Admin-controlled: whether this venue is currently on sale (45% discount via GraphQL subscription)
+  @Column({ default: false })
+  onSale: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 

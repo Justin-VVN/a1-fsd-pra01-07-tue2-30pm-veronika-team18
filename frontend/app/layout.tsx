@@ -5,6 +5,7 @@ import { Providers } from "./Providers";
 import ContextProvider from "./store/ContextProvider";
 import Header from "@/components/ui/header";
 import Footer from "@/components/ui/footer";
+import VenueDiscountAlert from "./components/VenueDiscountAlert";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,6 +37,7 @@ export default function RootLayout({
         <Providers>
           <ContextProvider>
             <Header />
+            <VenueDiscountAlert />
             <main className="flex-1">{children}</main>
             <Footer />
           </ContextProvider>
