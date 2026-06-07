@@ -23,7 +23,9 @@ import {
   TabPanel,
   Divider,
   Select,
-  Progress,
+  Checkbox,
+  Wrap,
+  WrapItem,
   Modal,
   ModalOverlay,
   ModalContent,
@@ -58,8 +60,11 @@ export default function VenuesPage() {
 
   const [myVenues, setMyVenues] = useState<any[]>([]);
   const [bookingRequests, setBookingRequests] = useState<any[]>([]);
+  const SUITABILITY_OPTIONS = ['Tennis', 'Dinner', 'Classical Music', 'Rock Concert', 'Birthday', 'Wedding'];
+
   const [editingVenue, setEditingVenue] = useState<any | null>(null);
   const [editForm, setEditForm] = useState({ name: '', imgSrc: '', location: '', capacity: '', price: '' });
+  const [editSuitability, setEditSuitability] = useState<string[]>([]);
   const [form, setForm] = useState({
     name: '',
     imgSrc: '',
@@ -67,6 +72,19 @@ export default function VenuesPage() {
     capacity: '',
     price: '',
   });
+  const [formSuitability, setFormSuitability] = useState<string[]>([]);
+  const [formCustomTag, setFormCustomTag] = useState('');
+  const [editCustomTag, setEditCustomTag] = useState('');
+
+  const toggleSuitability = (list: string[], setList: (v: string[]) => void, tag: string) => {
+    setList(list.includes(tag) ? list.filter((t) => t !== tag) : [...list, tag]);
+  };
+
+  const addCustomTag = (list: string[], setList: (v: string[]) => void, input: string, setInput: (v: string) => void) => {
+    const tag = input.trim();
+    if (tag && !list.includes(tag)) setList([...list, tag]);
+    setInput('');
+  };
 
   //Blocked dates component useStates
   const [blockedDates, setBlockedDates] = useState<any[]>([]);
@@ -76,6 +94,7 @@ export default function VenuesPage() {
     endDate: '',
     reason: '',
   });
+  const [timeFilter, setTimeFilter] = useState<'week' | 'month' | 'lastMonth' | 'allTime'>('allTime');
 
   // useEffect(() => {
   //     if (!currentUser) router.push('/signin');
@@ -263,38 +282,6 @@ const getHirerAverageRating = (hirerId: string) => {
     }
   };
 
-  const getHirerInsights = () => {
-    const hirerStats: { [key: string]: { name: string; accepted: number; total: number } } = {};
-
-    bookingRequests.forEach((req) => {
-      const hirerId = req.hirer?.id ?? req.hirerId ?? req.hirer_id ?? req.hirer?.name;
-      const hirerName = req.hirer?.name ?? 'Unknown Hirer';
-
-      if (!hirerStats[hirerId]) {
-        hirerStats[hirerId] = { name: hirerName, accepted: 0, total: 0 };
-      }
-
-      hirerStats[hirerId].total += 1;
-      if (req.status === 'confirmed') {
-        hirerStats[hirerId].accepted += 1;
-      }
-    });
-
-    const statsArray = Object.values(hirerStats);
-
-    const mostChosen = [...statsArray]
-      .sort((a, b) => b.accepted - a.accepted)
-      .slice(0, 5);
-
-    const leastChosen = [...statsArray]
-      .sort((a, b) => a.accepted - b.accepted)
-      .slice(0, 5);
-
-    const neverSelected = statsArray.filter((s) => s.accepted === 0);
-
-    return { mostChosen, leastChosen, neverSelected };
-  };
-  const { mostChosen, leastChosen, neverSelected } = getHirerInsights();
 
 //data preparation for the DI Hirer graphs
 const colours = [
@@ -312,9 +299,32 @@ const getHirerName = (booking: any) => {
   return `Hirer ${booking.hirerId}`;
 };
 
+// filter bookings by selected time window
+const filteredBookings = bookingRequests.filter((b: any) => {
+  if (timeFilter === 'allTime') return true;
+  const dateStr = b.checkIn ?? b.createdAt;
+  if (!dateStr) return false;
+  const date = new Date(dateStr);
+  const now = new Date();
+  if (timeFilter === 'week') {
+    const weekAgo = new Date(now);
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    return date >= weekAgo;
+  }
+  if (timeFilter === 'month') {
+    return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+  }
+  if (timeFilter === 'lastMonth') {
+    const lastMonth = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
+    const lastMonthYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+    return date.getMonth() === lastMonth && date.getFullYear() === lastMonthYear;
+  }
+  return true;
+});
+
 //getting the list of hirers who have made bookings
 const hirerNames = Array.from(
-  new Set(bookingRequests.map((booking) => getHirerName(booking)))
+  new Set(filteredBookings.map((booking) => getHirerName(booking)))
 );
 
 //counting how many times each hirer has applied for each venue
@@ -323,14 +333,13 @@ const venueTallies = myVenues.map((venue) => {
     venue: venue.name,
   };
 
-  bookingRequests
+  filteredBookings
     .filter(
       (booking) =>
         String(booking.venue?.id ?? booking.venueId) === String(venue.id)
     )
     .forEach((booking) => {
       const hirerName = getHirerName(booking);
-
       venueData[hirerName] = (venueData[hirerName] || 0) + 1;
     });
 
@@ -339,35 +348,27 @@ const venueTallies = myVenues.map((venue) => {
 
 //count bookings for each hirer
 const combinedTallies = hirerNames.map((hirerName) => {
-  const hirerBookings = bookingRequests.filter(
+  const hirerBookings = filteredBookings.filter(
     (booking) => getHirerName(booking) === hirerName
   );
 
   return {
     hirer: hirerName,
-    accepted: hirerBookings.filter(
-      (booking) => booking.status === 'confirmed'
-    ).length,
-    rejected: hirerBookings.filter(
-      (booking) => booking.status === 'rejected'
-    ).length,
-    pending: hirerBookings.filter(
-      (booking) => booking.status === 'pending'
-    ).length,
+    accepted: hirerBookings.filter((booking) => booking.status === 'confirmed').length,
+    rejected: hirerBookings.filter((booking) => booking.status === 'rejected').length,
+    pending: hirerBookings.filter((booking) => booking.status === 'pending').length,
   };
 });
 
 //data for most & least active hirer pie chart
 const pieData = hirerNames.map((hirerName) => ({
   name: hirerName,
-  value: bookingRequests.filter(
-    (booking) => getHirerName(booking) === hirerName
-  ).length,
+  value: filteredBookings.filter((booking) => getHirerName(booking) === hirerName).length,
 }));
 
 //venue utilisation by month
 const utilisationData = Object.values(
-  bookingRequests.reduce((acc: any, booking: any) => {
+  filteredBookings.reduce((acc: any, booking: any) => {
     const bookingDate = booking.checkIn ?? booking.createdAt;
 
     if (!bookingDate) return acc;
@@ -380,10 +381,7 @@ const utilisationData = Object.values(
     });
 
     if (!acc[month]) {
-      acc[month] = {
-        month,
-        bookings: 0,
-      };
+      acc[month] = { month, bookings: 0 };
     }
 
     acc[month].bookings += 1;
@@ -402,6 +400,7 @@ const utilisationData = Object.values(
       capacity: String(venue.capacity),
       price: String(venue.price),
     });
+    setEditSuitability(Array.isArray(venue.suitability) ? venue.suitability : []);
   };
 
   const handleUpdateVenue = async () => {
@@ -416,6 +415,7 @@ const utilisationData = Object.values(
           capacity: Number(editForm.capacity),
           price: Number(editForm.price),
           ownerId: currentUser.id,
+          suitability: editSuitability,
         }),
       });
       setMyVenues((prev) => prev.map((v) => (v.id === editingVenue.id ? { ...v, ...updated } : v)));
@@ -451,6 +451,7 @@ const utilisationData = Object.values(
       capacity: Number(form.capacity),
       price: Number(form.price),
       ownerId: currentUser.id,
+      suitability: formSuitability,
     };
 
     try {
@@ -462,6 +463,7 @@ const utilisationData = Object.values(
 
       toast({ title: 'Venue posted!', status: 'success' });
       setForm({ name: '', imgSrc: '', location: '', capacity: '', price: '' });
+      setFormSuitability([]);
     } catch (err) {
       console.error('Failed to post venue:', err);
       toast({ title: 'Could not post venue', status: 'error' });
@@ -667,6 +669,45 @@ const utilisationData = Object.values(
                       />
                     </FormControl>
                   </HStack>
+                  <FormControl>
+                    <FormLabel>Recommended Suitability</FormLabel>
+                    <Wrap spacing={3} mb={3}>
+                      {SUITABILITY_OPTIONS.map((tag) => (
+                        <WrapItem key={tag}>
+                          <Checkbox
+                            isChecked={formSuitability.includes(tag)}
+                            onChange={() => toggleSuitability(formSuitability, setFormSuitability, tag)}
+                          >
+                            {tag}
+                          </Checkbox>
+                        </WrapItem>
+                      ))}
+                    </Wrap>
+                    <HStack mb={2}>
+                      <Input
+                        placeholder="Add custom keyword…"
+                        value={formCustomTag}
+                        onChange={(e) => setFormCustomTag(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomTag(formSuitability, setFormSuitability, formCustomTag, setFormCustomTag); } }}
+                        size="sm"
+                      />
+                      <Button size="sm" colorScheme="teal" onClick={() => addCustomTag(formSuitability, setFormSuitability, formCustomTag, setFormCustomTag)}>
+                        Add
+                      </Button>
+                    </HStack>
+                    {formSuitability.filter((t) => !SUITABILITY_OPTIONS.includes(t)).length > 0 && (
+                      <Wrap spacing={2}>
+                        {formSuitability.filter((t) => !SUITABILITY_OPTIONS.includes(t)).map((tag) => (
+                          <WrapItem key={tag}>
+                            <Badge colorScheme="teal" px={2} py={1} borderRadius="full" cursor="pointer"
+                              onClick={() => setFormSuitability(formSuitability.filter((t2) => t2 !== tag))}>
+                              {tag} ✕
+                            </Badge>
+                          </WrapItem>
+                        ))}
+                      </Wrap>
+                    )}
+                  </FormControl>
                   <Button type='submit' colorScheme='blue' size='lg'>
                     Post Venue
                   </Button>
@@ -899,173 +940,88 @@ const utilisationData = Object.values(
           </TabPanel>
             
           <TabPanel>
-            <Heading size="lg" mb={8}>Hirer Insights</Heading>
+            <HStack justify="space-between" align="center" mb={6}>
+              <Heading size="lg">Visual Analytics</Heading>
+              <HStack spacing={2}>
+                {(['week', 'month', 'lastMonth', 'allTime'] as const).map((f) => (
+                  <Button
+                    key={f}
+                    size="sm"
+                    colorScheme="blue"
+                    variant={timeFilter === f ? 'solid' : 'outline'}
+                    onClick={() => setTimeFilter(f)}
+                  >
+                    {f === 'week' ? 'This Week' : f === 'month' ? 'This Month' : f === 'lastMonth' ? 'Last Month' : 'All Time'}
+                  </Button>
+                ))}
+              </HStack>
+            </HStack>
 
-            {/* Most Chosen */}
-            <Box mb={10}>
-              <Heading size="md" mb={4}>Most Chosen Applicants</Heading>
-              {mostChosen.length === 0 ? (
-                <Text color="gray.500">No data yet.</Text>
-              ) : (
-                <VStack align="stretch" spacing={4}>
-                  {mostChosen.map((hirer, i) => (
-                    <HStack key={i} bg="white" p={4} borderRadius="xl" boxShadow="sm">
-                      <Text fontWeight="bold" color="green.500" w="30px">#{i + 1}</Text>
-                      <Box flex={1}>
-                        <Text fontWeight="semibold">{hirer.name}</Text>
-                      </Box>
-                      <Text fontWeight="bold" color="green.600">
-                        {hirer.accepted} accepted
-                      </Text>
-                      <Box w="140px">
-                        <Progress value={(hirer.accepted / hirer.total) * 100} colorScheme="green" borderRadius="full" />
-                      </Box>
-                    </HStack>
-                  ))}
-                </VStack>
-              )}
-            </Box>
+            <SimpleGrid columns={[1, 1, 2]} spacing={8}>
+              <Box bg="white" p={6} borderRadius="xl" boxShadow="md">
+                <Heading size="md" mb={4}>Hirer Tallies by Venue</Heading>
+                <ResponsiveContainer width="100%" height={320}>
+                  <BarChart data={venueTallies}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="venue" />
+                    <YAxis allowDecimals={false} />
+                    <Tooltip />
+                    <Legend />
+                    {hirerNames.map((hirer, index) => (
+                      <Bar key={hirer} dataKey={hirer} fill={colours[index % colours.length]} />
+                    ))}
+                  </BarChart>
+                </ResponsiveContainer>
+              </Box>
 
-            {/* Least Chosen */}
-            <Box mb={10}>
-              <Heading size="md" mb={4}>Least Chosen Applicants</Heading>
-              {leastChosen.length === 0 ? (
-                <Text color="gray.500">No data yet.</Text>
-              ) : (
-                <VStack align="stretch" spacing={4}>
-                  {leastChosen.map((hirer, i) => (
-                    <HStack key={i} bg="white" p={4} borderRadius="xl" boxShadow="sm">
-                      <Text fontWeight="bold" color="orange.500" w="30px">#{i + 1}</Text>
-                      <Box flex={1}>
-                        <Text fontWeight="semibold">{hirer.name}</Text>
-                      </Box>
-                      <Text fontWeight="bold" color="orange.600">
-                        {hirer.accepted} accepted
-                      </Text>
-                      <Box w="140px">
-                        <Progress value={(hirer.accepted / hirer.total) * 100} colorScheme="orange" borderRadius="full" />
-                      </Box>
-                    </HStack>
-                  ))}
-                </VStack>
-              )}
-            </Box>
+              <Box bg="white" p={6} borderRadius="xl" boxShadow="md">
+                <Heading size="md" mb={4}>Combined Hirer Booking Status</Heading>
+                <ResponsiveContainer width="100%" height={320}>
+                  <BarChart data={combinedTallies}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="hirer" />
+                    <YAxis allowDecimals={false} />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="accepted" stackId="a" fill="#38A169" />
+                    <Bar dataKey="pending" stackId="a" fill="#DD6B20" />
+                    <Bar dataKey="rejected" stackId="a" fill="#E53E3E" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </Box>
 
-            {/* Never Selected */}
-            <Box>
-              <Heading size="md" mb={4}>Applicants Never Selected</Heading>
-              {neverSelected.length === 0 ? (
-                <Text color="gray.500">All hirers have been selected at least once.</Text>
-              ) : (
-                <SimpleGrid columns={[1, 2]} spacing={4}>
-                  {neverSelected.map((hirer) => (
-                    <Box key={hirer.name} bg="white" p={5} borderRadius="xl" boxShadow="sm">
-                      <Text fontWeight="semibold">{hirer.name}</Text>
-                    </Box>
-                  ))}
-                </SimpleGrid>
-              )}
-            </Box>
+              <Box bg="white" p={6} borderRadius="xl" boxShadow="md">
+                <Heading size="md" mb={4}>Most and Least Active Hirers</Heading>
+                <ResponsiveContainer width="100%" height={320}>
+                  <PieChart>
+                    <Pie data={pieData} dataKey="value" nameKey="name" outerRadius={100} label>
+                      {pieData.map((entry, index) => (
+                        <Cell key={entry.name} fill={colours[index % colours.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </Box>
+
+              <Box bg="white" p={6} borderRadius="xl" boxShadow="md">
+                <Heading size="md" mb={4}>Venue Utilisation Over Time</Heading>
+                <ResponsiveContainer width="100%" height={320}>
+                  <LineChart data={utilisationData as any[]}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis allowDecimals={false} />
+                    <Tooltip />
+                    <Legend />
+                    <Line type="monotone" dataKey="bookings" stroke="#3182CE" strokeWidth={3} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </Box>
+            </SimpleGrid>
           </TabPanel>
         </TabPanels>
       </Tabs>
-
-
-      <Divider my={10} />
-
-<Heading size="lg" mb={6}>
-  Visual Analytics
-</Heading>
-
-<SimpleGrid columns={[1, 1, 2]} spacing={8}>
-  <Box bg="white" p={6} borderRadius="xl" boxShadow="md">
-    <Heading size="md" mb={4}>
-      Hirer Tallies by Venue
-    </Heading>
-
-    <ResponsiveContainer width="100%" height={320}>
-      <BarChart data={venueTallies}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="venue" />
-        <YAxis allowDecimals={false} />
-        <Tooltip />
-        <Legend />
-        {hirerNames.map((hirer, index) => (
-          <Bar
-            key={hirer}
-            dataKey={hirer}
-            fill={colours[index % colours.length]}
-          />
-        ))}
-      </BarChart>
-    </ResponsiveContainer>
-  </Box>
-
-  <Box bg="white" p={6} borderRadius="xl" boxShadow="md">
-    <Heading size="md" mb={4}>
-      Combined Hirer Booking Status
-    </Heading>
-
-    <ResponsiveContainer width="100%" height={320}>
-      <BarChart data={combinedTallies}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="hirer" />
-        <YAxis allowDecimals={false} />
-        <Tooltip />
-        <Legend />
-        <Bar dataKey="accepted" stackId="a" fill="#38A169" />
-        <Bar dataKey="pending" stackId="a" fill="#DD6B20" />
-        <Bar dataKey="rejected" stackId="a" fill="#E53E3E" />
-      </BarChart>
-    </ResponsiveContainer>
-  </Box>
-
-  <Box bg="white" p={6} borderRadius="xl" boxShadow="md">
-    <Heading size="md" mb={4}>
-      Most and Least Active Hirers
-    </Heading>
-
-    <ResponsiveContainer width="100%" height={320}>
-      <PieChart>
-        <Pie
-          data={pieData}
-          dataKey="value"
-          nameKey="name"
-          outerRadius={100}
-          label
-        >
-          {pieData.map((entry, index) => (
-            <Cell key={entry.name} fill={colours[index % colours.length]} />
-          ))}
-        </Pie>
-        <Tooltip />
-        <Legend />
-      </PieChart>
-    </ResponsiveContainer>
-  </Box>
-
-  <Box bg="white" p={6} borderRadius="xl" boxShadow="md">
-    <Heading size="md" mb={4}>
-      Venue Utilisation Over Time
-    </Heading>
-
-    <ResponsiveContainer width="100%" height={320}>
-      <LineChart data={utilisationData as any[]}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="month" />
-        <YAxis allowDecimals={false} />
-        <Tooltip />
-        <Legend />
-        <Line
-          type="monotone"
-          dataKey="bookings"
-          stroke="#3182CE"
-          strokeWidth={3}
-        />
-      </LineChart>
-    </ResponsiveContainer>
-  </Box>
-</SimpleGrid>
 
       {/* Edit Venue Modal */}
       <Modal isOpen={!!editingVenue} onClose={() => setEditingVenue(null)} size='xl'>
@@ -1097,6 +1053,46 @@ const utilisationData = Object.values(
                   <Input type='number' value={editForm.price} onChange={(e) => setEditForm({ ...editForm, price: e.target.value })} />
                 </FormControl>
               </HStack>
+
+              <FormControl>
+                <FormLabel>Recommended Suitability</FormLabel>
+                <Wrap spacing={3} mb={3}>
+                  {SUITABILITY_OPTIONS.map((tag) => (
+                    <WrapItem key={tag}>
+                      <Checkbox
+                        isChecked={editSuitability.includes(tag)}
+                        onChange={() => toggleSuitability(editSuitability, setEditSuitability, tag)}
+                      >
+                        {tag}
+                      </Checkbox>
+                    </WrapItem>
+                  ))}
+                </Wrap>
+                <HStack mb={2}>
+                  <Input
+                    placeholder="Add custom keyword…"
+                    value={editCustomTag}
+                    onChange={(e) => setEditCustomTag(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomTag(editSuitability, setEditSuitability, editCustomTag, setEditCustomTag); } }}
+                    size="sm"
+                  />
+                  <Button size="sm" colorScheme="teal" onClick={() => addCustomTag(editSuitability, setEditSuitability, editCustomTag, setEditCustomTag)}>
+                    Add
+                  </Button>
+                </HStack>
+                {editSuitability.filter((t) => !SUITABILITY_OPTIONS.includes(t)).length > 0 && (
+                  <Wrap spacing={2}>
+                    {editSuitability.filter((t) => !SUITABILITY_OPTIONS.includes(t)).map((tag) => (
+                      <WrapItem key={tag}>
+                        <Badge colorScheme="teal" px={2} py={1} borderRadius="full" cursor="pointer"
+                          onClick={() => setEditSuitability(editSuitability.filter((t2) => t2 !== tag))}>
+                          {tag} ✕
+                        </Badge>
+                      </WrapItem>
+                    ))}
+                  </Wrap>
+                )}
+              </FormControl>
 
               <Divider mt={2} />
 

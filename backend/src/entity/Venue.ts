@@ -41,6 +41,9 @@ export class Venue {
   @Column()
   price: number;
 
+  @Column({ type: 'simple-array', nullable: true })
+  suitability: string[];
+
   @CreateDateColumn()
   createdAt: Date;
 

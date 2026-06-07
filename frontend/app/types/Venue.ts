@@ -7,6 +7,7 @@ export default interface Venue {
     location: string;
     capacity: number;
     price: number;
+    suitability: string[];
     createdAt: string;
     updatedAt: string;
 };

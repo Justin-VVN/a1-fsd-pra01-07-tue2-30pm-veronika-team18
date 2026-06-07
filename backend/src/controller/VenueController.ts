@@ -14,6 +14,7 @@ export class VenueController {
         ...rest,
         ownerId: owner?.id ?? null,
         ownerFullname: owner?.fullName ?? null,
+        suitability: v.suitability ?? [],
       };
     });
 
@@ -37,11 +38,12 @@ export class VenueController {
       ...rest,
       ownerId: owner?.id ?? null,
       ownerFullname: owner?.fullName ?? null,
+      suitability: venue.suitability ?? [],
     });
   }
 
   async save(request: Request, response: Response) {
-    const { name, ownerId, imgSrc, location, capacity, price } = request.body;
+    const { name, ownerId, imgSrc, location, capacity, price, suitability } = request.body;
 
     const venue = Object.assign(new Venue(), {
       name,
@@ -49,6 +51,7 @@ export class VenueController {
       location,
       capacity,
       price,
+      suitability: Array.isArray(suitability) ? suitability : [],
       owner: ownerId ? { id: Number(ownerId) } : undefined,
     });
 
@@ -65,7 +68,7 @@ export class VenueController {
 
   async update(request: Request, response: Response) {
     const id = parseInt(request.params.id);
-    const { name, ownerId, imgSrc, location, capacity, price } = request.body;
+    const { name, ownerId, imgSrc, location, capacity, price, suitability } = request.body;
 
     let venueToUpdate = await this.venueRepository.findOne({
       where: { id },
@@ -82,6 +85,7 @@ export class VenueController {
       location,
       capacity,
       price,
+      suitability: Array.isArray(suitability) ? suitability : venueToUpdate.suitability ?? [],
     });
 
     try {

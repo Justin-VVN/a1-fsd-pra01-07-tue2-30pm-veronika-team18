@@ -354,6 +354,20 @@ export default function VenueDetailPage({
             Perfect for your next event in Melbourne.
           </Text>
 
+          {/* Recommended Suitability */}
+          {venue.suitability?.length > 0 && (
+            <Box mt={4}>
+              <Text fontWeight='semibold' mb={2}>Recommended for:</Text>
+              <HStack flexWrap='wrap' spacing={2}>
+                {venue.suitability.map((tag) => (
+                  <Badge key={tag} colorScheme='purple' fontSize='sm' px={3} py={1} borderRadius='full' textTransform='capitalize'>
+                    {tag}
+                  </Badge>
+                ))}
+              </HStack>
+            </Box>
+          )}
+
           {/* Reviews section */}
           {venue && <VenueReviews venueId={venue.id} />}
           {venue && <WriteReview venueId={venue.id} />}

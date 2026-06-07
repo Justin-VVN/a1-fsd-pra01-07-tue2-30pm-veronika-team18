@@ -1,6 +1,6 @@
 'use client';
 
-import { Box, Heading, Text } from '@chakra-ui/react';
+import { Box, Divider, Heading, HStack, Text, VStack } from '@chakra-ui/react';
 import { useEffect, useState } from 'react';
 import { REVIEW_API, apiFetch } from '@/lib/api';
 
@@ -9,7 +9,15 @@ type Review = {
   venueId: number;
   rating: number;
   comment: string;
+  reviewerId?: number;
+  createdAt?: string;
 };
+
+const Stars = ({ rating }: { rating: number }) => (
+  <Text color="yellow.400" fontSize="md" letterSpacing="1px">
+    {'★'.repeat(rating)}{'☆'.repeat(5 - rating)}
+  </Text>
+);
 
 export default function VenueReviews({ venueId }: { venueId: number }) {
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -42,12 +50,32 @@ export default function VenueReviews({ venueId }: { venueId: number }) {
 
   return (
     <Box mt={16}>
-      <Heading size="lg">Reviews</Heading>
-      <Text>
-        {averageRating} / 5 ({reviews.length} reviews)
+      <Heading size="lg" mb={1}>Reviews</Heading>
+      <Text color="gray.500" mb={6}>
+        {averageRating} / 5 &nbsp;·&nbsp; {reviews.length} {reviews.length === 1 ? 'review' : 'reviews'}
       </Text>
 
-      {reviews.length === 0 && <Text>No reviews yet.</Text>}
+      {reviews.length === 0 ? (
+        <Text color="gray.400">No reviews yet. Be the first to leave one!</Text>
+      ) : (
+        <VStack align="stretch" spacing={4}>
+          {reviews.map((r, i) => (
+            <Box key={r.id ?? i} bg="gray.50" p={4} borderRadius="xl">
+              <HStack mb={1}>
+                <Stars rating={r.rating} />
+                <Text fontSize="sm" color="gray.500" ml={1}>{r.rating}/5</Text>
+              </HStack>
+              <Text>{r.comment}</Text>
+              {r.createdAt && (
+                <Text fontSize="xs" color="gray.400" mt={2}>
+                  {new Date(r.createdAt).toLocaleDateString()}
+                </Text>
+              )}
+              {i < reviews.length - 1 && <Divider mt={4} />}
+            </Box>
+          ))}
+        </VStack>
+      )}
     </Box>
   );
 }

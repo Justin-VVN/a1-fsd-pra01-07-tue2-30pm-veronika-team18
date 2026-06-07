@@ -25,20 +25,32 @@ export default function SignUp() {
       return;
     }
 
-  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{6,}$/;
-    // validatePassword(password) {
+  function validatePassword(pwd: string): boolean {
+      if (pwd.length < 6) return false;
+      let hasLower = false;
+      let hasUpper = false;
+      let hasSpecial = false;
+      for (let i = 0; i < pwd.length; i++) {
+        const c = pwd.charCodeAt(i);
+        if (c >= 97 && c <= 122) {
+          hasLower = true;
+        } else if (c >= 65 && c <= 90) {
+          hasUpper = true;
+        } else if ((c >= 33 && c <= 47) || (c >= 58 && c <= 64) || (c >= 91 && c <= 96) || (c >= 123 && c <= 126)) {
+          hasSpecial = true;
+        }
+      }
+      return hasLower && hasUpper && hasSpecial;
+    }
 
-    // }
-
-     if (!passwordRegex.test(password)) {
-       toast({
-       title: 'Password is too weak',
-        description:
-      'Password must be at least 6 characters, have uppercase, lowercase, and a special character.',
-       status: 'error',
-       });
-     return;
-     }
+    if (!validatePassword(password)) {
+      toast({
+        title: 'Password is too weak',
+        description: 'Password must be at least 6 characters, have uppercase, lowercase, and a special character.',
+        status: 'error',
+      });
+      return;
+    }
 
 
     if (!name || !email || !password) {
