@@ -46,8 +46,6 @@ Password: Password1!
 Email: hirer4@test.com  
 Password: Password1!
 
-Email: hirer5@test.com  
-Password: Password1!
 
 ## Features Implemented
 

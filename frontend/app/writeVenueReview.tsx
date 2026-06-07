@@ -6,10 +6,13 @@ import { REVIEW_API, apiFetch } from '@/lib/api';
 import { AppContext } from './store/ContextProvider';
 
 type Review = {
-  id?: number;
+ id?: number;
+  bookingId: number;
   venueId: number;
-  hirerId?: string;
+  reviewerId: number;
+  revieweeId: number;
   rating: number;
+  reviewType: "hirer" | "venue";
   comment: string;
 };
 
@@ -26,9 +29,12 @@ export default function WriteReview({ venueId }: { venueId: number }) {
     }
 
     const newReview: Review = {
+      bookingId: 1,
       venueId,
-      hirerId: currentUser?.id,
+      reviewerId: Number(currentUser?.id),
+      revieweeId: 1, 
       rating: Number(rating),
+      reviewType: "venue",
       comment: comment.trim(),
     };
 
