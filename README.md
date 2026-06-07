@@ -2,6 +2,9 @@
 
 [![Open in Visual Studio Code](https://classroom.github.com/assets/open-in-vscode-2e0aaae1b6195c2367325f4f02e2d04e9abb55f0b24a779b69b11b9e10269abc.svg)](https://classroom.github.com/online_ide?assignment_repo_id=23804030&assignment_repo_type=AssignmentRepo)
 
+Student 1: Vu Vuong Nguyen / s3969801
+Student 2: Caroline Forster / s4088927
+
 ## Tech Stack
 Frontend: React TypeScript / Next.js / Chakra UI  
 Backend: Node.js / Express / TypeORM  
@@ -52,6 +55,7 @@ Password: Password1!
 - Sign up and sign in with database storage
 - Complex password validation
 - Hirer profile
+- Hirer can check a venue’s ‘recommended suitability’ 
 - Vendor venue CRUD
 - Hirer venue browsing and booking
 - Booking accept/reject workflow
