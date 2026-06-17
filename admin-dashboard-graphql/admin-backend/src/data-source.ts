@@ -3,6 +3,8 @@ import { DataSource } from 'typeorm';
 import { User } from '../../../backend/src/entity/User';
 import { Venue } from '../../../backend/src/entity/Venue';
 import { Booking } from '../../../backend/src/entity/Booking';
+import { Document } from '../../../backend/src/entity/Document';
+import { BlockedDate } from '../../../backend/src/entity/BlockedDate';
 
 export const AppDataSource = new DataSource({
   type: 'mssql',
@@ -17,7 +19,7 @@ export const AppDataSource = new DataSource({
   },
   synchronize: true,
   logging: false,
-  entities: [User, Venue, Booking],
+  entities: [User, Venue, Booking, Document, BlockedDate],
   migrations: [],
   subscribers: [],
 });
