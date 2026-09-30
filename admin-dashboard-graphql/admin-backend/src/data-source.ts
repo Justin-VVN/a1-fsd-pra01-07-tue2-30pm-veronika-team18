@@ -8,11 +8,11 @@ import { BlockedDate } from '../../../backend/src/entity/BlockedDate';
 
 export const AppDataSource = new DataSource({
   type: 'mssql',
-  host: 'dipto-database.cn2ems8y2mfe.ap-southeast-2.rds.amazonaws.com',
-  port: 1433,
-  username: 's3969801',
-  password: 'VuVuong123',
-  database: 's3969801',
+  host: process.env.DB_HOST || 'localhost',
+  port: Number(process.env.DB_PORT) || 1433,
+  username: process.env.DB_USER || 'sa',
+  password: process.env.DB_PASSWORD || 'SqlExpress#2026',
+  database: process.env.DB_NAME || 'venue_booking',
   options: {
     encrypt: false,
     trustServerCertificate: true,
